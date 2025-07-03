@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>云存储应用商店</title>
+    <title>Bee Store - 学生作品展示平台</title>
     <style>
         * {
             margin: 0;
@@ -517,15 +517,15 @@
 <body>
     <!-- 状态指示器 -->
     <div id="status-indicator" class="status-indicator status-syncing">
-        ☁️ 使用JSONBin云存储
+        🐝 正在连接到 Bee Store
     </div>
 
     <div class="header">
         <div class="container">
             <nav class="nav">
                 <a href="#" class="logo">
-                    <span>☁️</span>
-                    <span>云应用商店</span>
+                    <span>🐝</span>
+                    <span>Bee Store</span>
                 </a>
                 <div class="nav-buttons">
                     <div id="guest-nav" style="display: flex; gap: 1rem;">
@@ -548,39 +548,38 @@
 
     <div class="container">
         <div class="main-content">
-            <h1 class="page-title">发现精彩应用</h1>
-            <p class="page-subtitle">跨设备同步，随时随地访问您的应用收藏</p>
+            <h1 class="page-title">发现精彩作品</h1>
+            <p class="page-subtitle">在这里展示你的创意，让更多人看到你的才华</p>
             
             <!-- 统计信息 -->
             <div class="stats-section" id="stats-section">
                 <div class="stats-row">
                     <div class="stat-item">
                         <h3 id="total-apps">0</h3>
-                        <p>总应用数</p>
+                        <p>作品总数</p>
                     </div>
                     <div class="stat-item">
                         <h3 id="total-users">0</h3>
-                        <p>注册用户</p>
+                        <p>创作者</p>
                     </div>
                     <div class="stat-item">
                         <h3 id="online-users">1</h3>
-                        <p>在线用户</p>
+                        <p>在线访客</p>
                     </div>
                 </div>
             </div>
 
             <!-- 搜索功能 -->
             <div class="search-section">
-                <input type="text" class="search-input" id="search-input" placeholder="搜索应用名称、描述...">
+                <input type="text" class="search-input" id="search-input" placeholder="搜索作品名称、描述、创作者...">
                 <div class="filter-row">
                     <select class="filter-select" id="category-filter">
                         <option value="">全部分类</option>
+                        <option value="游戏">游戏</option>
                         <option value="工具">工具</option>
-                        <option value="娱乐">娱乐</option>
-                        <option value="教育">教育</option>
-                        <option value="商务">商务</option>
-                        <option value="社交">社交</option>
-                        <option value="其他">其他</option>
+                        <option value="学习">学习</option>
+                        <option value="艺术">艺术</option>
+                        <option value="科技">科技</option>
                     </select>
                     <select class="filter-select" id="sort-filter">
                         <option value="newest">最新发布</option>
@@ -598,8 +597,8 @@
                 </div>
                 
                 <div class="empty-state" id="empty-state" style="display: none;">
-                    <h3>暂无应用</h3>
-                    <p>成为第一个发布应用的用户吧！</p>
+                    <h3>暂无作品</h3>
+                    <p>来展示你的第一个作品吧！</p>
                 </div>
             </div>
         </div>
@@ -664,31 +663,31 @@
     <div class="modal" id="publish-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">发布应用</h2>
+                <h2 class="modal-title">发布作品</h2>
                 <button class="close-btn" onclick="closeModal('publish-modal')">&times;</button>
             </div>
             <div>
                 <div class="form-group">
-                    <label for="app-name">应用名称 *</label>
-                    <input type="text" id="app-name" placeholder="输入应用名称">
+                    <label for="app-name">作品名称 *</label>
+                    <input type="text" id="app-name" placeholder="给你的作品起个名字">
                 </div>
                 <div class="form-group">
-                    <label for="app-url">应用链接 *</label>
+                    <label for="app-url">作品链接 *</label>
                     <input type="url" id="app-url" placeholder="https://example.com">
                 </div>
                 <div class="form-group">
-                    <label for="app-description">应用描述 *</label>
-                    <textarea id="app-description" placeholder="详细描述您的应用功能和特点..."></textarea>
+                    <label for="app-description">作品描述 *</label>
+                    <textarea id="app-description" placeholder="介绍一下你的作品，比如创作灵感、主要功能等..."></textarea>
                 </div>
                 <div class="form-group">
                     <label for="app-category">分类</label>
                     <select id="app-category">
                         <option value="其他">其他</option>
+                        <option value="游戏">游戏</option>
                         <option value="工具">工具</option>
-                        <option value="娱乐">娱乐</option>
-                        <option value="教育">教育</option>
-                        <option value="商务">商务</option>
-                        <option value="社交">社交</option>
+                        <option value="学习">学习</option>
+                        <option value="艺术">艺术</option>
+                        <option value="科技">科技</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -1218,14 +1217,14 @@
             localStorage.removeItem('currentUser');
             currentUser = null;
             showGuestNav();
-            document.querySelector('.page-title').textContent = '发现精彩应用';
+            document.querySelector('.page-title').textContent = '发现精彩作品';
             loadApps();
         }
 
         // 返回首页
         document.querySelector('.logo').addEventListener('click', function(e) {
             e.preventDefault();
-            document.querySelector('.page-title').textContent = '发现精彩应用';
+            document.querySelector('.page-title').textContent = '发现精彩作品';
             document.getElementById('search-input').value = '';
             document.getElementById('category-filter').value = '';
             loadApps();
