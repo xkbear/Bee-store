@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云存储应用商店</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* 状态指示器 */
+        .status-indicator {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1002;
+        }
+
+        .status-connected { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-syncing { background: #ffc107; color: black; }
+
+        /* 头部样式 */
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 主要内容区域 */
+        .main-content {
+            padding: 2rem 0;
+        }
+
+        .page-title {
+            text-align: center;
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .page-subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        /* 应用网格 */
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .app-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .app-screenshot {
+            width: 100%;
+            height: 160px;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.9rem;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .app-screenshot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .app-screenshot .placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            text-align: center;
+        }
+
+        .app-info h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .app-info p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .app-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: #888;
+        }
+
+        .app-stats {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .app-url {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.85rem;
+            word-break: break-all;
+            display: block;
+            margin-top: 0.5rem;
+        }
+
+        .app-url:hover {
+            text-decoration: underline;
+        }
+
+        .app-actions {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .app-action-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .app-action-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+
+        .btn-cancel {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        /* 发布应用按钮 */
+        .publish-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .publish-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: white;
+        }
+
+        .empty-state h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        .empty-state p {
+            opacity: 0.7;
+            font-size: 1.1rem;
+        }
+
+        /* 用户信息 */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: white;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            overflow: hidden;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 截图预览 */
+        .screenshot-preview {
+            width: 100%;
+            height: 200px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+
+        .screenshot-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 搜索功能 */
+        .search-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-select {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+
+        /* 统计信息 */
+        .stats-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-item p {
+            opacity: 0.8;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .apps-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 1rem;
+            }
+            
+            .nav-buttons {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .filter-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 状态指示器 -->
+    <div id="status-indicator" class="status-indicator status-syncing">
+        ☁️ 使用JSONBin云存储
+    </div>
+
+    <div class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="#" class="logo">
+                    <span>☁️</span>
+                    <span>云应用商店</span>
+                </a>
+                <div class="nav-buttons">
+                    <div id="guest-nav" style="display: flex; gap: 1rem;">
+                        <button class="btn btn-secondary" onclick="showLogin()">登录</button>
+                        <button class="btn btn-primary" onclick="showRegister()">注册</button>
+                    </div>
+                    <div id="user-nav" style="display: none; align-items: center; gap: 1rem;">
+                        <div class="user-info">
+                            <div class="user-avatar" id="user-avatar"></div>
+                            <span id="user-name"></span>
+                        </div>
+                        <button class="btn btn-secondary" onclick="showMyApps()">我的应用</button>
+                        <button class="btn btn-secondary" onclick="syncData()">同步数据</button>
+                        <button class="btn btn-secondary" onclick="logout()">退出</button>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="main-content">
+            <h1 class="page-title">发现精彩应用</h1>
+            <p class="page-subtitle">跨设备同步，随时随地访问您的应用收藏</p>
+            
+            <!-- 统计信息 -->
+            <div class="stats-section" id="stats-section">
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <h3 id="total-apps">0</h3>
+                        <p>总应用数</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 id="total-users">0</h3>
+                        <p>注册用户</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3 id="online-users">1</h3>
+                        <p>在线用户</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 搜索功能 -->
+            <div class="search-section">
+                <input type="text" class="search-input" id="search-input" placeholder="搜索应用名称、描述...">
+                <div class="filter-row">
+                    <select class="filter-select" id="category-filter">
+                        <option value="">全部分类</option>
+                        <option value="工具">工具</option>
+                        <option value="娱乐">娱乐</option>
+                        <option value="教育">教育</option>
+                        <option value="商务">商务</option>
+                        <option value="社交">社交</option>
+                        <option value="其他">其他</option>
+                    </select>
+                    <select class="filter-select" id="sort-filter">
+                        <option value="newest">最新发布</option>
+                        <option value="oldest">最早发布</option>
+                        <option value="name">按名称</option>
+                        <option value="author">按作者</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="searchApps()">搜索</button>
+                </div>
+            </div>
+            
+            <div id="apps-container">
+                <div class="apps-grid" id="apps-grid">
+                    <!-- 应用卡片将在这里动态加载 -->
+                </div>
+                
+                <div class="empty-state" id="empty-state" style="display: none;">
+                    <h3>暂无应用</h3>
+                    <p>成为第一个发布应用的用户吧！</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 发布应用按钮 -->
+    <button class="publish-btn" id="publish-btn" onclick="showPublishApp()" style="display: none;" title="发布应用">+</button>
+
+    <!-- 登录模态框 -->
+    <div class="modal" id="login-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">用户登录</h2>
+                <button class="close-btn" onclick="closeModal('login-modal')">&times;</button>
+            </div>
+            <div>
+                <div class="form-group">
+                    <label for="login-username">用户名</label>
+                    <input type="text" id="login-username" placeholder="输入用户名">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密码</label>
+                    <input type="password" id="login-password" placeholder="输入密码">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('login-modal')">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="handleLogin()">登录</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册模态框 -->
+    <div class="modal" id="register-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">用户注册</h2>
+                <button class="close-btn" onclick="closeModal('register-modal')">&times;</button>
+            </div>
+            <div>
+                <div class="form-group">
+                    <label for="register-username">用户名</label>
+                    <input type="text" id="register-username" placeholder="输入用户名">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">邮箱</label>
+                    <input type="email" id="register-email" placeholder="输入邮箱">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密码</label>
+                    <input type="password" id="register-password" placeholder="至少6个字符">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('register-modal')">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="handleRegister()">注册</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 发布应用模态框 -->
+    <div class="modal" id="publish-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">发布应用</h2>
+                <button class="close-btn" onclick="closeModal('publish-modal')">&times;</button>
+            </div>
+            <div>
+                <div class="form-group">
+                    <label for="app-name">应用名称 *</label>
+                    <input type="text" id="app-name" placeholder="输入应用名称">
+                </div>
+                <div class="form-group">
+                    <label for="app-url">应用链接 *</label>
+                    <input type="url" id="app-url" placeholder="https://example.com">
+                </div>
+                <div class="form-group">
+                    <label for="app-description">应用描述 *</label>
+                    <textarea id="app-description" placeholder="详细描述您的应用功能和特点..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="app-category">分类</label>
+                    <select id="app-category">
+                        <option value="其他">其他</option>
+                        <option value="工具">工具</option>
+                        <option value="娱乐">娱乐</option>
+                        <option value="教育">教育</option>
+                        <option value="商务">商务</option>
+                        <option value="社交">社交</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>应用截图</label>
+                    <div class="screenshot-preview" id="screenshot-preview">
+                        <div class="placeholder">
+                            <div style="font-size: 2rem;">📸</div>
+                            <div>输入链接后点击生成截图</div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="generateScreenshot()" style="margin-top: 0.5rem;">生成截图</button>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('publish-modal')">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="handlePublishApp()">发布</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 云存储配置 - 使用JSONBin免费服务
+        const CLOUD_CONFIG = {
+            // JSONBin配置
+            binId: '', // 将在 Netlify 函数中设置
+            apiKey: '', // 将在 Netlify 函数中设置
+            baseUrl: 'https://api.jsonbin.io/v3/b'
+        };
+
+        // 全局变量
+        let currentUser = null;
+        let cloudData = {
+            users: [],
+            apps: [],
+            lastSync: null
+        };
+
+        // 云存储API类
+        class CloudStorage {
+            constructor() {
+                this.baseUrl = '/.netlify/functions/jsonbin-proxy';
+            }
+
+            async saveData(data) {
+                try {
+                    const response = await fetch(this.baseUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('保存失败');
+                    }
+                    
+                    return await response.json();
+                } catch (error) {
+                    console.error('保存到云端失败:', error);
+                    throw error;
+                }
+            }
+
+            async loadData() {
+                try {
+                    const response = await fetch(this.baseUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('加载失败');
+                    }
+                    
+                    const result = await response.json();
+                    return result.record || { users: [], apps: [], lastSync: null };
+                } catch (error) {
+                    console.error('从云端加载失败:', error);
+                    throw error;
+                }
+            }
+        }
+
+        const cloudStorage = new CloudStorage();
+
+        // 状态管理
+        function updateStatus(message, type = 'syncing') {
+            const indicator = document.getElementById('status-indicator');
+            indicator.textContent = message;
+            indicator.className = `status-indicator status-${type}`;
+        }
+
+        // 初始化
+        async function init() {
+            updateStatus('☁️ 正在同步数据...', 'syncing');
+            
+            try {
+                // 从云端加载数据
+                cloudData = await cloudStorage.loadData();
+                updateStatus('☁️ 数据同步成功', 'connected');
+                
+                // 检查本地登录状态
+                const storedUser = localStorage.getItem('currentUser');
+                if (storedUser) {
+                    const userData = JSON.parse(storedUser);
+                    // 验证用户是否仍然存在
+                    const user = cloudData.users.find(u => u.id === userData.id);
+                    if (user) {
+                        currentUser = user;
+                        showUserNav();
+                    } else {
+                        localStorage.removeItem('currentUser');
+                        showGuestNav();
+                    }
+                } else {
+                    showGuestNav();
+                }
+
+                // 加载应用
+                loadApps();
+                updateStats();
+                
+                // 设置搜索事件
+                setupSearchEvents();
+                
+            } catch (error) {
+                console.error('初始化失败:', error);
+                updateStatus('❌ 云端连接失败', 'error');
+                // 使用本地数据或示例数据
+                initLocalData();
+                showGuestNav();
+                loadApps();
+            }
+        }
+
+        // 初始化本地数据
+        function initLocalData() {
+            cloudData = {
+                users: [
+                    {
+                        id: 1,
+                        username: 'demo',
+                        email: 'demo@example.com',
+                        password: 'demo123',
+                        createdAt: new Date().toISOString()
+                    }
+                ],
+                apps: [
+                    {
+                        id: 1,
+                        name: 'Claude AI',
+                        url: 'https://claude.ai',
+                        description: '强大的AI助手，帮助您完成各种任务和创作',
+                        category: '工具',
+                        author: 'demo',
+                        authorId: 1,
+                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://claude.ai',
+                        createdAt: new Date().toISOString()
+                    },
+                    {
+                        id: 2,
+                        name: 'GitHub',
+                        url: 'https://github.com',
+                        description: '全球最大的代码托管和协作平台',
+                        category: '开发',
+                        author: 'demo',
+                        authorId: 1,
+                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://github.com',
+                        createdAt: new Date().toISOString()
+                    }
+                ],
+                lastSync: new Date().toISOString()
+            };
+        }
+
+        // 同步数据到云端
+        async function syncData() {
+            updateStatus('☁️ 正在同步...', 'syncing');
+            
+            try {
+                cloudData.lastSync = new Date().toISOString();
+                await cloudStorage.saveData(cloudData);
+                updateStatus('☁️ 同步成功', 'connected');
+                updateStats();
+            } catch (error) {
+                updateStatus('❌ 同步失败', 'error');
+                alert('同步失败: ' + error.message);
+            }
+        }
+
+        // 更新统计信息
+        function updateStats() {
+            document.getElementById('total-apps').textContent = cloudData.apps.length;
+            document.getElementById('total-users').textContent = cloudData.users.length;
+            // 在线用户数模拟
+            document.getElementById('online-users').textContent = Math.floor(Math.random() * 10) + 1;
+        }
+
+        // 设置搜索事件
+        function setupSearchEvents() {
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchApps();
+                }
+            });
+
+            // 实时搜索
+            searchInput.addEventListener('input', debounce(searchApps, 300));
+        }
+
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 搜索应用
+        function searchApps() {
+            loadApps();
+        }
+
+        // 加载应用
+        function loadApps() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const categoryFilter = document.getElementById('category-filter').value;
+            const sortFilter = document.getElementById('sort-filter').value;
+
+            let filteredApps = cloudData.apps;
+
+            // 搜索过滤
+            if (searchTerm) {
+                filteredApps = filteredApps.filter(app => 
+                    app.name.toLowerCase().includes(searchTerm) ||
+                    app.description.toLowerCase().includes(searchTerm) ||
+                    app.author.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            // 分类过滤
+            if (categoryFilter) {
+                filteredApps = filteredApps.filter(app => app.category === categoryFilter);
+            }
+
+            // 排序
+            switch (sortFilter) {
+                case 'newest':
+                    filteredApps.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+                case 'oldest':
+                    filteredApps.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                    break;
+                case 'name':
+                    filteredApps.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'author':
+                    filteredApps.sort((a, b) => a.author.localeCompare(b.author));
+                    break;
+            }
+
+            displayApps(filteredApps);
+        }
+
+        // 显示应用
+        function displayApps(apps) {
+            const appsGrid = document.getElementById('apps-grid');
+            const emptyState = document.getElementById('empty-state');
+
+            if (apps.length === 0) {
+                appsGrid.innerHTML = '';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            appsGrid.innerHTML = apps.map(app => `
+                <div class="app-card">
+                    ${currentUser && currentUser.id === app.authorId ? `
+                        <div class="app-actions">
+                            <button class="app-action-btn" onclick="deleteApp(${app.id})" title="删除">🗑️</button>
+                        </div>
+                    ` : ''}
+                    <div class="app-screenshot">
+                        ${app.screenshot ? 
+                            `<img src="${app.screenshot}" alt="${app.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'placeholder\\'><div style=\\'font-size: 2rem;\\'>🌐</div><div>暂无截图</div></div>'">` :
+                            '<div class="placeholder"><div style="font-size: 2rem;">🌐</div><div>暂无截图</div></div>'
+                        }
+                    </div>
+                    <div class="app-info">
+                        <h3>${app.name}</h3>
+                        <p>${app.description}</p>
+                        <div class="app-meta">
+                            <span>👤 ${app.author}</span>
+                            <span>📅 ${new Date(app.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div class="app-meta">
+                            <span>🏷️ ${app.category}</span>
+                            <span></span>
+                        </div>
+                        <a href="${app.url}" target="_blank" class="app-url">${app.url}</a>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 删除应用
+        async function deleteApp(appId) {
+            if (!confirm('确定要删除这个应用吗？')) return;
+
+            try {
+                cloudData.apps = cloudData.apps.filter(app => app.id !== appId);
+                await syncData();
+                loadApps();
+                alert('删除成功！');
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        // 显示我的应用
+        function showMyApps() {
+            if (!currentUser) {
+                alert('请先登录');
+                return;
+            }
+
+            const myApps = cloudData.apps.filter(app => app.authorId === currentUser.id);
+            document.querySelector('.page-title').textContent = '我的应用';
+            displayApps(myApps);
+        }
+
+        // 显示导航
+        function showGuestNav() {
+            document.getElementById('guest-nav').style.display = 'flex';
+            document.getElementById('user-nav').style.display = 'none';
+            document.getElementById('publish-btn').style.display = 'none';
+        }
+
+        function showUserNav() {
+            document.getElementById('guest-nav').style.display = 'none';
+            document.getElementById('user-nav').style.display = 'flex';
+            document.getElementById('publish-btn').style.display = 'block';
+
+            if (currentUser) {
+                document.getElementById('user-name').textContent = currentUser.username;
+                document.getElementById('user-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
+            }
+        }
+
+        // 模态框操作
+        function showModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        function showLogin() {
+            showModal('login-modal');
+        }
+
+        function showRegister() {
+            showModal('register-modal');
+        }
+
+        function showPublishApp() {
+            if (!currentUser) {
+                alert('请先登录');
+                showLogin();
+                return;
+            }
+            showModal('publish-modal');
+        }
+
+        // 处理登录
+        async function handleLogin() {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value.trim();
+
+            if (!username || !password) {
+                alert('请填写用户名和密码');
+                return;
+            }
+
+            const user = cloudData.users.find(u => u.username === username && u.password === password);
+            
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('currentUser', JSON.stringify(user));
+                showUserNav();
+                closeModal('login-modal');
+                alert('登录成功！');
+            } else {
+                alert('用户名或密码错误');
+            }
+        }
+
+        // 处理注册
+        async function handleRegister() {
+            const username = document.getElementById('register-username').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value.trim();
+
+            if (!username || !email || !password) {
+                alert('请填写所有字段');
+                return;
+            }
+
+            if (password.length < 6) {
+                alert('密码至少需要6个字符');
+                return;
+            }
+
+            // 检查用户名是否已存在
+            if (cloudData.users.some(u => u.username === username)) {
+                alert('用户名已存在');
+                return;
+            }
+
+            // 检查邮箱是否已存在
+            if (cloudData.users.some(u => u.email === email)) {
+                alert('邮箱已存在');
+                return;
+            }
+
+            try {
+                const newUser = {
+                    id: Date.now(),
+                    username,
+                    email,
+                    password,
+                    createdAt: new Date().toISOString()
+                };
+
+                cloudData.users.push(newUser);
+                await syncData();
+
+                currentUser = newUser;
+                localStorage.setItem('currentUser', JSON.stringify(newUser));
+                showUserNav();
+                closeModal('register-modal');
+                alert('注册成功！');
+
+            } catch (error) {
+                alert('注册失败: ' + error.message);
+            }
+        }
+
+        // 处理发布应用
+        async function handlePublishApp() {
+            const name = document.getElementById('app-name').value.trim();
+            const url = document.getElementById('app-url').value.trim();
+            const description = document.getElementById('app-description').value.trim();
+            const category = document.getElementById('app-category').value;
+
+            if (!name || !url || !description) {
+                alert('请填写所有必需字段');
+                return;
+            }
+
+            try {
+                const screenshot = document.querySelector('#screenshot-preview img')?.src || '';
+
+                const newApp = {
+                    id: Date.now(),
+                    name,
+                    url,
+                    description,
+                    category,
+                    author: currentUser.username,
+                    authorId: currentUser.id,
+                    screenshot,
+                    createdAt: new Date().toISOString()
+                };
+
+                cloudData.apps.push(newApp);
+                await syncData();
+
+                closeModal('publish-modal');
+                alert('应用发布成功！');
+                loadApps();
+
+            } catch (error) {
+                alert('发布失败: ' + error.message);
+            }
+        }
+
+        // 生成截图
+        function generateScreenshot() {
+            const url = document.getElementById('app-url').value.trim();
+            if (!url) {
+                alert('请先输入应用链接');
+                return;
+            }
+
+            const preview = document.getElementById('screenshot-preview');
+            preview.innerHTML = '<div class="loading"></div><span style="margin-left: 10px;">正在生成截图...</span>';
+
+            // 使用第三方截图服务
+            const screenshotUrl = `https://image.thum.io/get/width/1200/crop/800/noanimate/${encodeURIComponent(url)}`;
+            
+            setTimeout(() => {
+                const img = new Image();
+                img.onload = function() {
+                    preview.innerHTML = `<img src="${screenshotUrl}" alt="网站截图">`;
+                };
+                img.onerror = function() {
+                    preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">❌</div><div>截图生成失败</div></div>';
+                };
+                img.src = screenshotUrl;
+            }, 2000);
+        }
+
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            showGuestNav();
+            document.querySelector('.page-title').textContent = '发现精彩应用';
+            loadApps();
+        }
+
+        // 返回首页
+        document.querySelector('.logo').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelector('.page-title').textContent = '发现精彩应用';
+            document.getElementById('search-input').value = '';
+            document.getElementById('category-filter').value = '';
+            loadApps();
+        });
+
+        // 初始化应用
+        init();
+    </script>
+</body>
+</html>

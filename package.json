@@ -1,0 +1,8 @@
+{
+  "name": "cloud-storage-app",
+  "version": "1.0.0",
+  "description": "云存储应用商店",
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  }
+} 
