@@ -1120,10 +1120,23 @@
         const cloudStorage = new CloudStorage();
 
         // 状态管理
+        let statusHideTimeout = null;
         function updateStatus(message, type = 'syncing') {
             const indicator = document.getElementById('status-indicator');
             indicator.textContent = message;
             indicator.className = `status-indicator status-${type}`;
+            indicator.style.display = 'block';
+            // 清除之前的定时器
+            if (statusHideTimeout) {
+                clearTimeout(statusHideTimeout);
+                statusHideTimeout = null;
+            }
+            // 成功状态自动隐藏
+            if (type === 'connected') {
+                statusHideTimeout = setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, 3000);
+            }
         }
 
         // 初始化
