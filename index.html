@@ -2039,8 +2039,9 @@
             preview.innerHTML = '<div class="loading"></div><span style="margin-left: 10px;">正在压缩图片...</span>';
 
             const options = {
-                maxSizeMB: 1,
-                maxWidthOrHeight: 1920,
+                maxSizeMB: 0.2, // 压缩到约200KB
+                maxWidthOrHeight: 1024,
+                fileType: 'image/jpeg',
                 useWebWorker: true,
                 onProgress: (p) => {
                     const progressSpan = preview.querySelector('span');
