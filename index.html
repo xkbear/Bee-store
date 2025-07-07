@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #ff9500 0%, #ff6600 100%);
             min-height: 100vh;
             color: #333;
         }
@@ -86,7 +86,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            background: linear-gradient(45deg, #ff9500, #ff6600);
             color: white;
         }
 
@@ -206,7 +206,7 @@
         }
 
         .app-url {
-            color: #667eea;
+            color: #ff6600;
             text-decoration: none;
             font-size: 0.85rem;
             word-break: break-all;
@@ -315,7 +315,7 @@
 
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #ff9500;
         }
 
         .form-group textarea {
@@ -343,7 +343,7 @@
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            background: linear-gradient(45deg, #ff9500, #ff6600);
             color: white;
             border: none;
             font-size: 1.5rem;
@@ -383,11 +383,134 @@
             color: white;
         }
 
+        /* 应用互动按钮 */
+        .app-interactions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding: 0.75rem 0;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .interaction-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .interaction-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.85rem;
+            color: #666;
+            transition: color 0.3s ease;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .interaction-btn:hover {
+            color: #ff9500;
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .interaction-btn.active {
+            color: #ff9500;
+        }
+
+        .interaction-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .interaction-btn:disabled:hover {
+            color: #666;
+            background: none;
+        }
+
+        /* 评论区域 */
+        .comments-section {
+            margin-top: 1rem;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 1rem;
+        }
+
+        .comment-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .comment-author {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .comment-content {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .comment-delete {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0.25rem;
+        }
+
+        .comment-delete:hover {
+            color: #c82333;
+        }
+
+        .comment-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .comment-input input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .comment-input button {
+            padding: 0.5rem 1rem;
+            background: #ff9500;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .comment-input button:hover {
+            background: #ff6600;
+        }
+
         .user-avatar {
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            background: linear-gradient(45deg, #ff9500, #ff6600);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -428,7 +551,7 @@
             width: 20px;
             height: 20px;
             border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
+            border-top: 2px solid #ff9500;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -511,6 +634,24 @@
             .filter-row {
                 flex-direction: column;
             }
+
+            .interaction-group {
+                gap: 0.5rem;
+            }
+
+            .interaction-btn {
+                font-size: 0.8rem;
+                padding: 0.2rem 0.4rem;
+            }
+
+            .comment-input {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .comment-input input {
+                margin-bottom: 0;
+            }
         }
     </style>
 </head>
@@ -538,6 +679,7 @@
                             <span id="user-name"></span>
                         </div>
                         <button class="btn btn-secondary" onclick="showMyApps()">我的应用</button>
+                        <button class="btn btn-secondary" onclick="showMyFavorites()">我的收藏</button>
                         <button class="btn btn-secondary" onclick="syncData()">同步数据</button>
                         <button class="btn btn-secondary" onclick="logout()">退出</button>
                     </div>
@@ -561,10 +703,6 @@
                     <div class="stat-item">
                         <h3 id="total-users">0</h3>
                         <p>创作者</p>
-                    </div>
-                    <div class="stat-item">
-                        <h3 id="online-users">1</h3>
-                        <p>在线访客</p>
                     </div>
                 </div>
             </div>
@@ -790,6 +928,16 @@
             try {
                 // 从云端加载数据
                 cloudData = await cloudStorage.loadData();
+                
+                // 确保数据结构兼容性（为旧数据添加新字段）
+                if (cloudData.apps) {
+                    cloudData.apps.forEach(app => {
+                        if (!app.likes) app.likes = [];
+                        if (!app.favorites) app.favorites = [];
+                        if (!app.comments) app.comments = [];
+                    });
+                }
+                
                 updateStatus('☁️ 数据同步成功', 'connected');
                 
                 // 检查本地登录状态
@@ -847,7 +995,10 @@
                         category: '工具',
                         author: 'demo',
                         authorId: 1,
-                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://claude.ai',
+                        screenshot: '/.netlify/functions/screenshot-proxy?url=https%3A//claude.ai',
+                        likes: [],
+                        favorites: [],
+                        comments: [],
                         createdAt: new Date().toISOString()
                     },
                     {
@@ -858,7 +1009,10 @@
                         category: '开发',
                         author: 'demo',
                         authorId: 1,
-                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://github.com',
+                        screenshot: '/.netlify/functions/screenshot-proxy?url=https%3A//github.com',
+                        likes: [],
+                        favorites: [],
+                        comments: [],
                         createdAt: new Date().toISOString()
                     }
                 ],
@@ -885,8 +1039,6 @@
         function updateStats() {
             document.getElementById('total-apps').textContent = cloudData.apps.length;
             document.getElementById('total-users').textContent = cloudData.users.length;
-            // 在线用户数模拟
-            document.getElementById('online-users').textContent = Math.floor(Math.random() * 10) + 1;
         }
 
         // 设置搜索事件
@@ -973,7 +1125,13 @@
             }
 
             emptyState.style.display = 'none';
-            appsGrid.innerHTML = apps.map(app => `
+            appsGrid.innerHTML = apps.map(app => {
+                const isLiked = currentUser && app.likes && app.likes.includes(currentUser.id);
+                const isFavorited = currentUser && app.favorites && app.favorites.includes(currentUser.id);
+                const likesCount = app.likes ? app.likes.length : 0;
+                const commentsCount = app.comments ? app.comments.length : 0;
+                
+                return `
                 <div class="app-card">
                     ${currentUser && currentUser.id === app.authorId ? `
                         <div class="app-actions">
@@ -998,9 +1156,51 @@
                             <span></span>
                         </div>
                         <a href="${app.url}" target="_blank" class="app-url">${app.url}</a>
+                        
+                        <!-- 互动按钮 -->
+                        <div class="app-interactions">
+                            <div class="interaction-group">
+                                <button class="interaction-btn ${isLiked ? 'active' : ''}" onclick="toggleLike(${app.id})" ${!currentUser ? 'disabled title="请先登录"' : ''}>
+                                    ${isLiked ? '❤️' : '🤍'} ${likesCount}
+                                </button>
+                                <button class="interaction-btn" onclick="showComments(${app.id})" ${!currentUser ? 'disabled title="请先登录"' : ''}>
+                                    💬 ${commentsCount}
+                                </button>
+                                <button class="interaction-btn ${isFavorited ? 'active' : ''}" onclick="toggleFavorite(${app.id})" ${!currentUser ? 'disabled title="请先登录"' : ''}>
+                                    ${isFavorited ? '⭐' : '☆'} 收藏
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 评论区域 -->
+                        <div class="comments-section" id="comments-${app.id}" style="display: none;">
+                            <div id="comments-list-${app.id}">
+                                ${app.comments ? app.comments.map(comment => `
+                                    <div class="comment-item">
+                                        <div class="comment-header">
+                                            <span class="comment-author">${comment.author}</span>
+                                            <div>
+                                                <span>${new Date(comment.createdAt).toLocaleDateString()}</span>
+                                                ${currentUser && currentUser.id === comment.authorId ? `
+                                                    <button class="comment-delete" onclick="deleteComment(${app.id}, ${comment.id})">删除</button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="comment-content">${comment.content}</div>
+                                    </div>
+                                `).join('') : ''}
+                            </div>
+                            ${currentUser ? `
+                                <div class="comment-input">
+                                    <input type="text" placeholder="写下你的评论..." id="comment-input-${app.id}" onkeypress="if(event.key==='Enter') addComment(${app.id})">
+                                    <button onclick="addComment(${app.id})">发送</button>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // 删除应用
@@ -1027,6 +1227,151 @@
             const myApps = cloudData.apps.filter(app => app.authorId === currentUser.id);
             document.querySelector('.page-title').textContent = '我的应用';
             displayApps(myApps);
+        }
+
+        // 显示我的收藏
+        function showMyFavorites() {
+            if (!currentUser) {
+                alert('请先登录');
+                return;
+            }
+
+            const myFavorites = cloudData.apps.filter(app => 
+                app.favorites && app.favorites.includes(currentUser.id)
+            );
+            document.querySelector('.page-title').textContent = '我的收藏';
+            displayApps(myFavorites);
+        }
+
+        // 点赞功能
+        async function toggleLike(appId) {
+            if (!currentUser) {
+                alert('请先登录');
+                return;
+            }
+
+            try {
+                const app = cloudData.apps.find(app => app.id === appId);
+                if (!app) return;
+
+                if (!app.likes) app.likes = [];
+
+                const likedIndex = app.likes.indexOf(currentUser.id);
+                if (likedIndex > -1) {
+                    app.likes.splice(likedIndex, 1);
+                } else {
+                    app.likes.push(currentUser.id);
+                }
+
+                await syncData();
+                loadApps(); // 重新加载以更新UI
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        // 收藏功能
+        async function toggleFavorite(appId) {
+            if (!currentUser) {
+                alert('请先登录');
+                return;
+            }
+
+            try {
+                const app = cloudData.apps.find(app => app.id === appId);
+                if (!app) return;
+
+                if (!app.favorites) app.favorites = [];
+
+                const favoritedIndex = app.favorites.indexOf(currentUser.id);
+                if (favoritedIndex > -1) {
+                    app.favorites.splice(favoritedIndex, 1);
+                } else {
+                    app.favorites.push(currentUser.id);
+                }
+
+                await syncData();
+                loadApps(); // 重新加载以更新UI
+            } catch (error) {
+                alert('操作失败: ' + error.message);
+            }
+        }
+
+        // 显示/隐藏评论
+        function showComments(appId) {
+            const commentsSection = document.getElementById(`comments-${appId}`);
+            if (commentsSection.style.display === 'none') {
+                commentsSection.style.display = 'block';
+            } else {
+                commentsSection.style.display = 'none';
+            }
+        }
+
+        // 添加评论
+        async function addComment(appId) {
+            if (!currentUser) {
+                alert('请先登录');
+                return;
+            }
+
+            const input = document.getElementById(`comment-input-${appId}`);
+            const content = input.value.trim();
+            
+            if (!content) {
+                alert('请输入评论内容');
+                return;
+            }
+
+            try {
+                const app = cloudData.apps.find(app => app.id === appId);
+                if (!app) return;
+
+                if (!app.comments) app.comments = [];
+
+                const newComment = {
+                    id: Date.now(),
+                    content,
+                    author: currentUser.username,
+                    authorId: currentUser.id,
+                    createdAt: new Date().toISOString()
+                };
+
+                app.comments.push(newComment);
+                input.value = '';
+
+                await syncData();
+                loadApps(); // 重新加载以更新UI
+            } catch (error) {
+                alert('评论失败: ' + error.message);
+            }
+        }
+
+        // 删除评论
+        async function deleteComment(appId, commentId) {
+            if (!currentUser) {
+                alert('请先登录');
+                return;
+            }
+
+            if (!confirm('确定要删除这条评论吗？')) return;
+
+            try {
+                const app = cloudData.apps.find(app => app.id === appId);
+                if (!app || !app.comments) return;
+
+                const comment = app.comments.find(c => c.id === commentId);
+                if (!comment || comment.authorId !== currentUser.id) {
+                    alert('只能删除自己的评论');
+                    return;
+                }
+
+                app.comments = app.comments.filter(c => c.id !== commentId);
+
+                await syncData();
+                loadApps(); // 重新加载以更新UI
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
         }
 
         // 显示导航
@@ -1171,6 +1516,9 @@
                     author: currentUser.username,
                     authorId: currentUser.id,
                     screenshot,
+                    likes: [],
+                    favorites: [],
+                    comments: [],
                     createdAt: new Date().toISOString()
                 };
 
@@ -1197,8 +1545,8 @@
             const preview = document.getElementById('screenshot-preview');
             preview.innerHTML = '<div class="loading"></div><span style="margin-left: 10px;">正在生成截图...</span>';
 
-            // 使用第三方截图服务
-            const screenshotUrl = `https://image.thum.io/get/width/1200/crop/800/noanimate/${encodeURIComponent(url)}`;
+            // 使用Netlify函数代理截图API
+            const screenshotUrl = `/.netlify/functions/screenshot-proxy?url=${encodeURIComponent(url)}`;
             
             setTimeout(() => {
                 const img = new Image();
@@ -1227,6 +1575,7 @@
             document.querySelector('.page-title').textContent = '发现精彩作品';
             document.getElementById('search-input').value = '';
             document.getElementById('category-filter').value = '';
+            document.getElementById('sort-filter').value = 'newest';
             loadApps();
         });
 
