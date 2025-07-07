@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bee Store - 学生作品展示平台</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ctext y='14' font-size='14'%3E🐝%3C/text%3E%3C/svg%3E" />
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <style>
         * {
@@ -1307,7 +1308,7 @@
         }
 
         // 显示应用
-        function displayApps(apps) {
+        function displayApps(apps, showActions = false) {
             const appsGrid = document.getElementById('apps-grid');
             const emptyState = document.getElementById('empty-state');
 
@@ -1326,7 +1327,7 @@
                 
                 return `
                 <div class="app-card">
-                    ${currentUser && currentUser.id === app.authorId ? `
+                    ${showActions && currentUser && currentUser.id === app.authorId ? `
                         <div class="app-actions">
                             <button class="app-action-btn edit-btn" onclick="showEditModal(${app.id})" title="编辑">✏️</button>
                             <button class="app-action-btn" onclick="deleteApp(${app.id})" title="删除">🗑️</button>
@@ -1420,7 +1421,7 @@
 
             const myApps = cloudData.apps.filter(app => app.authorId === currentUser.id);
             document.querySelector('.page-title').textContent = '我的应用';
-            displayApps(myApps);
+            displayApps(myApps, true);
         }
 
         // 显示我的收藏
@@ -1434,7 +1435,7 @@
                 app.favorites && app.favorites.includes(currentUser.id)
             );
             document.querySelector('.page-title').textContent = '我的收藏';
-            displayApps(myFavorites);
+            displayApps(myFavorites, false);
         }
 
         // 点赞功能
