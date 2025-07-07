@@ -1665,6 +1665,19 @@
             }
         }
 
+        function resetPublishModal() {
+            document.getElementById('app-name').value = '';
+            document.getElementById('app-url').value = '';
+            document.getElementById('app-description').value = '';
+            document.getElementById('app-category').value = '其他';
+            document.getElementById('screenshot-upload').value = '';
+            document.getElementById('screenshot-preview').innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">📸</div><div>选择截图方式</div></div>';
+            
+            // 重置截图方式为API生成
+            document.querySelector('input[name="screenshot-method"][value="api"]').checked = true;
+            toggleScreenshotMethod();
+        }
+
         function showLogin() {
             showModal('login-modal');
         }
