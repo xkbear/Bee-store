@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bee Store - 学生作品展示平台</title>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <style>
         * {
             margin: 0;
@@ -2020,7 +2021,7 @@
         }
 
         // 处理图片上传
-        function handleImageUpload(input) {
+        async function handleImageUpload(input) {
             const file = input.files[0];
             if (!file) return;
 
@@ -2029,19 +2030,42 @@
                 return;
             }
 
-            if (file.size > 5 * 1024 * 1024) { // 5MB限制
-                alert('图片文件不能超过5MB');
+            if (file.size > 10 * 1024 * 1024) { // 10MB 初始限制，后续会自动压缩
+                alert('图片文件不能超过10MB');
                 return;
             }
+            
+            const preview = document.getElementById('screenshot-preview');
+            preview.innerHTML = '<div class="loading"></div><span style="margin-left: 10px;">正在压缩图片...</span>';
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const preview = document.getElementById('screenshot-preview');
-                const base64Data = e.target.result;
-                const img = `<img src="${base64Data}" alt="上传的截图" data-base64="${base64Data}">`;
-                preview.innerHTML = img;
+            const options = {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+                onProgress: (p) => {
+                    const progressSpan = preview.querySelector('span');
+                    if (progressSpan) {
+                        progressSpan.textContent = `正在压缩图片... ${p}%`;
+                    }
+                },
             };
-            reader.readAsDataURL(file);
+
+            try {
+                const compressedFile = await imageCompression(file, options);
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const base64Data = e.target.result;
+                    const img = `<img src="${base64Data}" alt="上传的截图" data-base64="${base64Data}">`;
+                    preview.innerHTML = img;
+                };
+                reader.readAsDataURL(compressedFile);
+
+            } catch (error) {
+                console.error(error);
+                alert('图片压缩失败，请尝试其他图片或换个浏览器。');
+                preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">❌</div><div>压缩失败</div></div>';
+            }
         }
 
         // 退出登录
