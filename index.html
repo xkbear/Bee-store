@@ -13,7 +13,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #ff9500 0%, #ff6600 100%);
+            background: #ffffff;
             min-height: 100vh;
             color: #333;
         }
@@ -32,20 +32,22 @@
             background: rgba(0, 0, 0, 0.8);
             color: white;
             padding: 8px 12px;
-            border-radius: 4px;
+            border-radius: 20px;
             font-size: 12px;
             z-index: 1002;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
         .status-connected { background: #28a745; }
         .status-error { background: #dc3545; }
-        .status-syncing { background: #ffc107; color: black; }
+        .status-syncing { background: #ff9500; color: white; }
 
         /* 头部样式 */
         .header {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            background: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid #f0f0f0;
             padding: 1rem 0;
             position: sticky;
             top: 0;
@@ -61,7 +63,7 @@
         .logo {
             font-size: 1.8rem;
             font-weight: bold;
-            color: white;
+            color: #ff9500;
             text-decoration: none;
             display: flex;
             align-items: center;
@@ -91,9 +93,9 @@
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: #ffffff;
+            color: #ff9500;
+            border: 1px solid #ff9500;
         }
 
         .btn:hover {
@@ -114,15 +116,14 @@
 
         .page-title {
             text-align: center;
-            color: white;
+            color: #333;
             font-size: 2.5rem;
             margin-bottom: 1rem;
-            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
 
         .page-subtitle {
             text-align: center;
-            color: rgba(255, 255, 255, 0.8);
+            color: #666;
             margin-bottom: 2rem;
             font-size: 1.1rem;
         }
@@ -136,23 +137,26 @@
         }
 
         .app-card {
-            background: rgba(255, 255, 255, 0.95);
+            background: #ffffff;
+            border: 1px solid #e9ecef;
             border-radius: 16px;
             padding: 1.5rem;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             position: relative;
         }
 
         .app-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 25px rgba(255, 149, 0, 0.15);
+            border-color: #ff9500;
         }
 
         .app-screenshot {
             width: 100%;
             height: 160px;
-            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border: 1px solid #e9ecef;
             border-radius: 8px;
             margin-bottom: 1rem;
             display: flex;
@@ -220,14 +224,16 @@
 
         .app-actions {
             position: absolute;
-            top: 1rem;
-            right: 1rem;
+            top: 0.5rem;
+            right: 0.5rem;
             display: flex;
             gap: 0.5rem;
+            z-index: 10;
         }
 
         .app-action-btn {
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
             border: none;
             border-radius: 50%;
             width: 32px;
@@ -238,11 +244,13 @@
             justify-content: center;
             font-size: 0.9rem;
             transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
         }
 
         .app-action-btn:hover {
-            background: white;
+            background: #dc3545;
             transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
         /* 模态框样式 */
@@ -361,17 +369,17 @@
         .empty-state {
             text-align: center;
             padding: 4rem 2rem;
-            color: white;
+            color: #666;
         }
 
         .empty-state h3 {
             font-size: 1.5rem;
             margin-bottom: 1rem;
-            opacity: 0.9;
+            color: #333;
         }
 
         .empty-state p {
-            opacity: 0.7;
+            color: #666;
             font-size: 1.1rem;
         }
 
@@ -380,7 +388,7 @@
             display: flex;
             align-items: center;
             gap: 1rem;
-            color: white;
+            color: #333;
         }
 
         /* 应用互动按钮 */
@@ -563,7 +571,8 @@
 
         /* 搜索功能 */
         .search-section {
-            background: rgba(255, 255, 255, 0.1);
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 2rem;
@@ -593,7 +602,7 @@
 
         /* 统计信息 */
         .stats-section {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, #ff9500 0%, #ff6600 100%);
             border-radius: 12px;
             padding: 1.5rem;
             margin-bottom: 2rem;
@@ -615,8 +624,130 @@
             opacity: 0.8;
         }
 
+        /* 汉堡菜单样式 */
+        .hamburger-menu {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            padding: 0.5rem;
+            gap: 0.3rem;
+        }
+
+        .hamburger-line {
+            width: 24px;
+            height: 3px;
+            background-color: #ff9500;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger-menu.active .hamburger-line:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .hamburger-menu.active .hamburger-line:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger-menu.active .hamburger-line:nth-child(3) {
+            transform: rotate(-45deg) translate(7px, -6px);
+        }
+
+        .mobile-nav-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .mobile-nav-overlay.active {
+            opacity: 1;
+        }
+
+        .mobile-nav-menu {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 280px;
+            height: 100%;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            padding: 2rem 1.5rem;
+        }
+
+        .mobile-nav-menu.active {
+            right: 0;
+        }
+
+        .mobile-nav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .mobile-nav-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ff9500;
+        }
+
+        .mobile-nav-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #666;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .mobile-nav-items {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .mobile-nav-item {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-nav-item:hover {
+            background: #ff9500;
+            color: white;
+            border-color: #ff9500;
+        }
+
+        .mobile-user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
         /* 响应式设计 */
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
             .apps-grid {
                 grid-template-columns: 1fr;
             }
@@ -627,8 +758,11 @@
             }
             
             .nav-buttons {
-                flex-direction: column;
-                gap: 0.5rem;
+                display: none;
+            }
+
+            .hamburger-menu {
+                display: flex;
             }
 
             .filter-row {
@@ -651,6 +785,23 @@
 
             .comment-input input {
                 margin-bottom: 0;
+            }
+
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .page-subtitle {
+                font-size: 1rem;
+            }
+
+            .stats-row {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .logo {
+                font-size: 1.5rem;
             }
         }
     </style>
@@ -684,6 +835,13 @@
                         <button class="btn btn-secondary" onclick="logout()">退出</button>
                     </div>
                 </div>
+                
+                <!-- 汉堡菜单按钮 -->
+                <div class="hamburger-menu" id="hamburger-menu" onclick="toggleMobileMenu()">
+                    <div class="hamburger-line"></div>
+                    <div class="hamburger-line"></div>
+                    <div class="hamburger-line"></div>
+                </div>
             </nav>
         </div>
     </div>
@@ -713,9 +871,9 @@
                 <div class="filter-row">
                     <select class="filter-select" id="category-filter">
                         <option value="">全部分类</option>
-                        <option value="游戏">游戏</option>
                         <option value="工具">工具</option>
                         <option value="学习">学习</option>
+                        <option value="游戏">游戏</option>
                         <option value="艺术">艺术</option>
                         <option value="科技">科技</option>
                     </select>
@@ -744,6 +902,52 @@
 
     <!-- 发布应用按钮 -->
     <button class="publish-btn" id="publish-btn" onclick="showPublishApp()" style="display: none;" title="发布应用">+</button>
+
+    <!-- 移动端菜单 -->
+    <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileMenu()"></div>
+    <div class="mobile-nav-menu" id="mobile-nav-menu">
+        <div class="mobile-nav-header">
+            <div class="mobile-nav-title">菜单</div>
+            <button class="mobile-nav-close" onclick="closeMobileMenu()">&times;</button>
+        </div>
+        
+        <!-- 未登录状态菜单 -->
+        <div id="mobile-guest-nav" style="display: none;">
+            <div class="mobile-nav-items">
+                <button class="mobile-nav-item" onclick="showLogin(); closeMobileMenu();">
+                    👤 登录
+                </button>
+                <button class="mobile-nav-item" onclick="showRegister(); closeMobileMenu();">
+                    ✨ 注册
+                </button>
+            </div>
+        </div>
+        
+        <!-- 已登录状态菜单 -->
+        <div id="mobile-user-nav" style="display: none;">
+            <div class="mobile-user-info">
+                <div class="user-avatar" id="mobile-user-avatar"></div>
+                <span id="mobile-user-name"></span>
+            </div>
+            <div class="mobile-nav-items">
+                <button class="mobile-nav-item" onclick="showPublishApp(); closeMobileMenu();" style="background: linear-gradient(45deg, #ff9500, #ff6600); color: white; border-color: #ff9500;">
+                    ➕ 发布作品
+                </button>
+                <button class="mobile-nav-item" onclick="showMyApps(); closeMobileMenu();">
+                    📱 我的应用
+                </button>
+                <button class="mobile-nav-item" onclick="showMyFavorites(); closeMobileMenu();">
+                    ⭐ 我的收藏
+                </button>
+                <button class="mobile-nav-item" onclick="syncData(); closeMobileMenu();">
+                    ☁️ 同步数据
+                </button>
+                <button class="mobile-nav-item" onclick="logout(); closeMobileMenu();">
+                    🚪 退出登录
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- 登录模态框 -->
     <div class="modal" id="login-modal">
@@ -821,9 +1025,9 @@
                     <label for="app-category">分类</label>
                     <select id="app-category">
                         <option value="其他">其他</option>
-                        <option value="游戏">游戏</option>
                         <option value="工具">工具</option>
                         <option value="学习">学习</option>
+                        <option value="游戏">游戏</option>
                         <option value="艺术">艺术</option>
                         <option value="科技">科技</option>
                     </select>
@@ -833,10 +1037,41 @@
                     <div class="screenshot-preview" id="screenshot-preview">
                         <div class="placeholder">
                             <div style="font-size: 2rem;">📸</div>
-                            <div>输入链接后点击生成截图</div>
+                            <div>选择截图方式</div>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="generateScreenshot()" style="margin-top: 0.5rem;">生成截图</button>
+                    <div style="margin-top: 0.5rem;">
+                        <div style="margin-bottom: 0.5rem;">
+                            <label style="font-weight: normal; font-size: 0.9rem;">截图方式：</label>
+                        </div>
+                        <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                                <input type="radio" name="screenshot-method" value="api" checked onchange="toggleScreenshotMethod()">
+                                <span>自动生成截图</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: normal; cursor: pointer;">
+                                <input type="radio" name="screenshot-method" value="upload" onchange="toggleScreenshotMethod()">
+                                <span>上传本地图片</span>
+                            </label>
+                        </div>
+                        <div id="screenshot-api-section" style="display: block;">
+                            <button type="button" class="btn btn-secondary" onclick="generateScreenshot()">
+                                🌐 生成网页截图
+                            </button>
+                            <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
+                                根据应用链接自动生成网页截图
+                            </div>
+                        </div>
+                        <div id="screenshot-upload-section" style="display: none;">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('screenshot-upload').click()">
+                                📁 上传图片文件
+                            </button>
+                            <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
+                                支持 JPG、PNG、GIF 格式，最大 5MB
+                            </div>
+                        </div>
+                    </div>
+                    <input type="file" id="screenshot-upload" accept="image/*" style="display: none;" onchange="handleImageUpload(this)">
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-cancel" onclick="closeModal('publish-modal')">取消</button>
@@ -989,13 +1224,13 @@
                 apps: [
                     {
                         id: 1,
-                        name: 'Claude AI',
-                        url: 'https://claude.ai',
-                        description: '强大的AI助手，帮助您完成各种任务和创作',
+                        name: '2Brain',
+                        url: 'https://portal.2brain.ai/',
+                        description: '知识库型AI平台，建立知识库、智能体，包括模板写作、自然语言excel分析、智能出题考试判卷等功能',
                         category: '工具',
-                        author: 'demo',
+                        author: 'Beebee AI',
                         authorId: 1,
-                        screenshot: '/.netlify/functions/screenshot-proxy?url=https%3A//claude.ai',
+                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://portal.2brain.ai/',
                         likes: [],
                         favorites: [],
                         comments: [],
@@ -1003,13 +1238,13 @@
                     },
                     {
                         id: 2,
-                        name: 'GitHub',
-                        url: 'https://github.com',
-                        description: '全球最大的代码托管和协作平台',
-                        category: '开发',
-                        author: 'demo',
+                        name: 'Beebee Trademate',
+                        url: 'https://beebee.com',
+                        description: '商机包，商机搜索引擎，支持自然语言搜索、AI生成邮件一键发送',
+                        category: '工具',
+                        author: 'Beebee AI',
                         authorId: 1,
-                        screenshot: '/.netlify/functions/screenshot-proxy?url=https%3A//github.com',
+                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://beebee.com',
                         likes: [],
                         favorites: [],
                         comments: [],
@@ -1374,22 +1609,88 @@
             }
         }
 
+        // 移动端菜单控制
+        function toggleMobileMenu() {
+            const hamburger = document.getElementById('hamburger-menu');
+            const overlay = document.getElementById('mobile-nav-overlay');
+            const menu = document.getElementById('mobile-nav-menu');
+            
+            const isOpen = menu.classList.contains('active');
+            
+            if (isOpen) {
+                closeMobileMenu();
+            } else {
+                openMobileMenu();
+            }
+        }
+
+        function openMobileMenu() {
+            const hamburger = document.getElementById('hamburger-menu');
+            const overlay = document.getElementById('mobile-nav-overlay');
+            const menu = document.getElementById('mobile-nav-menu');
+            
+            hamburger.classList.add('active');
+            overlay.style.display = 'block';
+            
+            // 延迟添加active类以触发动画
+            setTimeout(() => {
+                overlay.classList.add('active');
+                menu.classList.add('active');
+            }, 10);
+            
+            // 禁止背景滚动
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileMenu() {
+            const hamburger = document.getElementById('hamburger-menu');
+            const overlay = document.getElementById('mobile-nav-overlay');
+            const menu = document.getElementById('mobile-nav-menu');
+            
+            hamburger.classList.remove('active');
+            overlay.classList.remove('active');
+            menu.classList.remove('active');
+            
+            // 延迟隐藏遮罩层以完成动画
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 300);
+            
+            // 恢复背景滚动
+            document.body.style.overflow = '';
+        }
+
         // 显示导航
         function showGuestNav() {
+            // 桌面端导航
             document.getElementById('guest-nav').style.display = 'flex';
             document.getElementById('user-nav').style.display = 'none';
             document.getElementById('publish-btn').style.display = 'none';
+            
+            // 移动端导航
+            document.getElementById('mobile-guest-nav').style.display = 'block';
+            document.getElementById('mobile-user-nav').style.display = 'none';
         }
 
         function showUserNav() {
+            // 桌面端导航
             document.getElementById('guest-nav').style.display = 'none';
             document.getElementById('user-nav').style.display = 'flex';
             document.getElementById('publish-btn').style.display = 'block';
 
             if (currentUser) {
+                // 桌面端用户信息
                 document.getElementById('user-name').textContent = currentUser.username;
                 document.getElementById('user-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
+                
+                // 移动端用户信息
+                document.getElementById('mobile-user-name').textContent = currentUser.username;
+                document.getElementById('mobile-user-avatar').textContent = currentUser.username.charAt(0).toUpperCase();
             }
+            
+            // 移动端导航
+            document.getElementById('mobile-guest-nav').style.display = 'none';
+            document.getElementById('mobile-user-nav').style.display = 'block';
         }
 
         // 模态框操作
@@ -1399,6 +1700,20 @@
 
         function closeModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
+            
+            // 如果是发布模态框，重置表单
+            if (modalId === 'publish-modal') {
+                document.getElementById('app-name').value = '';
+                document.getElementById('app-url').value = '';
+                document.getElementById('app-description').value = '';
+                document.getElementById('app-category').value = '其他';
+                document.getElementById('screenshot-upload').value = '';
+                document.getElementById('screenshot-preview').innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">📸</div><div>选择截图方式</div></div>';
+                
+                // 重置截图方式为API生成
+                document.querySelector('input[name="screenshot-method"][value="api"]').checked = true;
+                toggleScreenshotMethod();
+            }
         }
 
         function showLogin() {
@@ -1538,26 +1853,90 @@
         function generateScreenshot() {
             const url = document.getElementById('app-url').value.trim();
             if (!url) {
-                alert('请先输入应用链接');
+                alert('请先填写"作品链接"字段，然后再生成截图');
+                return;
+            }
+
+            // 验证URL格式
+            try {
+                new URL(url);
+            } catch (e) {
+                alert('请输入有效的网址链接（如：https://example.com）');
                 return;
             }
 
             const preview = document.getElementById('screenshot-preview');
             preview.innerHTML = '<div class="loading"></div><span style="margin-left: 10px;">正在生成截图...</span>';
 
-            // 使用Netlify函数代理截图API
-            const screenshotUrl = `/.netlify/functions/screenshot-proxy?url=${encodeURIComponent(url)}`;
-            
-            setTimeout(() => {
+            // 使用多个备用截图服务
+            const screenshotServices = [
+                `https://image.thum.io/get/width/1200/crop/800/noanimate/${encodeURIComponent(url)}`,
+                `https://mini.s-shot.ru/1200x800/PNG/?${encodeURIComponent(url)}`,
+                `https://api.urlbox.io/v1/ca482d7e-9417-4569-90fe-80f7c5e1c781/png?url=${encodeURIComponent(url)}&width=1200&height=800`
+            ];
+
+            let currentServiceIndex = 0;
+
+            function tryNextService() {
+                if (currentServiceIndex >= screenshotServices.length) {
+                    preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">❌</div><div>截图生成失败，请手动上传图片</div></div>';
+                    return;
+                }
+
+                const screenshotUrl = screenshotServices[currentServiceIndex];
                 const img = new Image();
+                
                 img.onload = function() {
                     preview.innerHTML = `<img src="${screenshotUrl}" alt="网站截图">`;
                 };
+                
                 img.onerror = function() {
-                    preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">❌</div><div>截图生成失败</div></div>';
+                    currentServiceIndex++;
+                    setTimeout(tryNextService, 1000);
                 };
+                
                 img.src = screenshotUrl;
-            }, 2000);
+            }
+
+            setTimeout(tryNextService, 2000);
+        }
+
+        // 切换截图方式
+        function toggleScreenshotMethod() {
+            const apiSection = document.getElementById('screenshot-api-section');
+            const uploadSection = document.getElementById('screenshot-upload-section');
+            const selectedMethod = document.querySelector('input[name="screenshot-method"]:checked').value;
+
+            if (selectedMethod === 'api') {
+                apiSection.style.display = 'block';
+                uploadSection.style.display = 'none';
+            } else {
+                apiSection.style.display = 'none';
+                uploadSection.style.display = 'block';
+            }
+        }
+
+        // 处理图片上传
+        function handleImageUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                alert('请选择图片文件');
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) { // 5MB限制
+                alert('图片文件不能超过5MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('screenshot-preview');
+                preview.innerHTML = `<img src="${e.target.result}" alt="上传的截图">`;
+            };
+            reader.readAsDataURL(file);
         }
 
         // 退出登录
@@ -1579,8 +1958,24 @@
             loadApps();
         });
 
+        // 窗口大小改变时处理
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 1024) {
+                // 桌面端模式下关闭移动端菜单
+                closeMobileMenu();
+            }
+        });
+
+        // 键盘事件处理
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeMobileMenu();
+            }
+        });
+
         // 初始化应用
         init();
     </script>
 </body>
 </html>
+
