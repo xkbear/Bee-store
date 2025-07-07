@@ -253,6 +253,14 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
+        .app-action-btn.edit-btn {
+            background: rgba(0, 123, 255, 0.9);
+        }
+        
+        .app-action-btn.edit-btn:hover {
+            background: #007bff;
+        }
+
         /* 模态框样式 */
         .modal {
             display: none;
@@ -900,8 +908,8 @@
         </div>
     </div>
 
-    <!-- 发布应用按钮 -->
-    <button class="publish-btn" id="publish-btn" onclick="showPublishApp()" style="display: none;" title="发布应用">+</button>
+    <!-- 发布/编辑应用按钮 -->
+    <button class="publish-btn" id="publish-btn" onclick="showPublishModal()" style="display: none;" title="发布应用">+</button>
 
     <!-- 移动端菜单 -->
     <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileMenu()"></div>
@@ -930,7 +938,7 @@
                 <span id="mobile-user-name"></span>
             </div>
             <div class="mobile-nav-items">
-                <button class="mobile-nav-item" onclick="showPublishApp(); closeMobileMenu();" style="background: linear-gradient(45deg, #ff9500, #ff6600); color: white; border-color: #ff9500;">
+                <button class="mobile-nav-item" onclick="showPublishModal(); closeMobileMenu();" style="background: linear-gradient(45deg, #ff9500, #ff6600); color: white; border-color: #ff9500;">
                     ➕ 发布作品
                 </button>
                 <button class="mobile-nav-item" onclick="showMyApps(); closeMobileMenu();">
@@ -949,63 +957,11 @@
         </div>
     </div>
 
-    <!-- 登录模态框 -->
-    <div class="modal" id="login-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">用户登录</h2>
-                <button class="close-btn" onclick="closeModal('login-modal')">&times;</button>
-            </div>
-            <div>
-                <div class="form-group">
-                    <label for="login-username">用户名</label>
-                    <input type="text" id="login-username" placeholder="输入用户名">
-                </div>
-                <div class="form-group">
-                    <label for="login-password">密码</label>
-                    <input type="password" id="login-password" placeholder="输入密码">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-cancel" onclick="closeModal('login-modal')">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="handleLogin()">登录</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 注册模态框 -->
-    <div class="modal" id="register-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">用户注册</h2>
-                <button class="close-btn" onclick="closeModal('register-modal')">&times;</button>
-            </div>
-            <div>
-                <div class="form-group">
-                    <label for="register-username">用户名</label>
-                    <input type="text" id="register-username" placeholder="输入用户名">
-                </div>
-                <div class="form-group">
-                    <label for="register-email">邮箱</label>
-                    <input type="email" id="register-email" placeholder="输入邮箱">
-                </div>
-                <div class="form-group">
-                    <label for="register-password">密码</label>
-                    <input type="password" id="register-password" placeholder="至少6个字符">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn btn-cancel" onclick="closeModal('register-modal')">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="handleRegister()">注册</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 发布应用模态框 -->
+    <!-- 发布/编辑应用模态框 -->
     <div class="modal" id="publish-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">发布作品</h2>
+                <h2 class="modal-title" id="publish-modal-title">发布作品</h2>
                 <button class="close-btn" onclick="closeModal('publish-modal')">&times;</button>
             </div>
             <div>
@@ -1075,7 +1031,7 @@
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-cancel" onclick="closeModal('publish-modal')">取消</button>
-                    <button type="button" class="btn btn-primary" onclick="handlePublishApp()">发布</button>
+                    <button type="button" class="btn btn-primary" id="save-app-btn" onclick="handleSaveApp()">发布</button>
                 </div>
             </div>
         </div>
@@ -1092,6 +1048,7 @@
 
         // 全局变量
         let currentUser = null;
+        let currentEditingAppId = null; // 用于跟踪正在编辑的应用ID
         let cloudData = {
             users: [],
             apps: [],
@@ -1370,6 +1327,7 @@
                 <div class="app-card">
                     ${currentUser && currentUser.id === app.authorId ? `
                         <div class="app-actions">
+                            <button class="app-action-btn edit-btn" onclick="showEditModal(${app.id})" title="编辑">✏️</button>
                             <button class="app-action-btn" onclick="deleteApp(${app.id})" title="删除">🗑️</button>
                         </div>
                     ` : ''}
@@ -1534,7 +1492,7 @@
 
         // 显示/隐藏评论
         function showComments(appId) {
-            const commentsSection = document.getElementById(`comments-${appId}`);
+            const commentsSection = document.getElementById(`comments-${app.id}`);
             if (commentsSection.style.display === 'none') {
                 commentsSection.style.display = 'block';
             } else {
@@ -1549,7 +1507,7 @@
                 return;
             }
 
-            const input = document.getElementById(`comment-input-${appId}`);
+            const input = document.getElementById(`comment-input-${app.id}`);
             const content = input.value.trim();
             
             if (!content) {
@@ -1703,16 +1661,7 @@
             
             // 如果是发布模态框，重置表单
             if (modalId === 'publish-modal') {
-                document.getElementById('app-name').value = '';
-                document.getElementById('app-url').value = '';
-                document.getElementById('app-description').value = '';
-                document.getElementById('app-category').value = '其他';
-                document.getElementById('screenshot-upload').value = '';
-                document.getElementById('screenshot-preview').innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">📸</div><div>选择截图方式</div></div>';
-                
-                // 重置截图方式为API生成
-                document.querySelector('input[name="screenshot-method"][value="api"]').checked = true;
-                toggleScreenshotMethod();
+                resetPublishModal();
             }
         }
 
@@ -1724,12 +1673,45 @@
             showModal('register-modal');
         }
 
-        function showPublishApp() {
-            if (!currentUser) {
-                alert('请先登录');
-                showLogin();
-                return;
+        function showPublishModal() {
+            currentEditingAppId = null;
+            document.getElementById('publish-modal-title').textContent = '发布作品';
+            document.getElementById('save-app-btn').textContent = '发布';
+            
+            // 确保URL字段可编辑
+            document.getElementById('app-url').readOnly = false;
+            document.getElementById('app-url').style.background = '';
+            
+            // 重置表单并显示模态框
+            resetPublishModal();
+            showModal('publish-modal');
+        }
+
+        function showEditModal(appId) {
+            currentEditingAppId = appId;
+            const app = cloudData.apps.find(a => a.id === appId);
+            if (!app) return;
+
+            document.getElementById('publish-modal-title').textContent = '编辑作品';
+            document.getElementById('save-app-btn').textContent = '保存更改';
+            
+            // 填充表单
+            document.getElementById('app-name').value = app.name;
+            document.getElementById('app-url').value = app.url;
+            document.getElementById('app-description').value = app.description;
+            document.getElementById('app-category').value = app.category;
+            
+            const preview = document.getElementById('screenshot-preview');
+            if (app.screenshot && app.screenshot.trim()) {
+                preview.innerHTML = `<img src="${app.screenshot}" alt="应用截图" data-base64="${app.screenshot}">`;
+            } else {
+                preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">📸</div><div>选择截图方式</div></div>';
             }
+
+            // URL在编辑时不可更改
+            document.getElementById('app-url').readOnly = true;
+            document.getElementById('app-url').style.background = '#f1f1f1';
+
             showModal('publish-modal');
         }
 
@@ -1807,8 +1789,8 @@
             }
         }
 
-        // 处理发布应用
-        async function handlePublishApp() {
+        // 处理发布/编辑应用
+        async function handleSaveApp() {
             const name = document.getElementById('app-name').value.trim();
             const url = document.getElementById('app-url').value.trim();
             const description = document.getElementById('app-description').value.trim();
@@ -1819,51 +1801,62 @@
                 return;
             }
 
-            try {
-                // 获取截图数据 - 优先使用base64数据
-                const previewImg = document.querySelector('#screenshot-preview img');
-                let screenshot = '';
-                
-                if (previewImg) {
-                    // 优先使用base64数据（已经转换好的）
-                    const base64Data = previewImg.getAttribute('data-base64');
-                    if (base64Data) {
-                        screenshot = base64Data;
-                    } else {
-                        // 如果没有base64数据，提示用户重新生成截图
-                        const screenshotSrc = previewImg.src;
-                        if (screenshotSrc && !screenshotSrc.startsWith('data:')) {
-                            alert('截图还在处理中，请稍等片刻后再发布，或重新生成截图');
-                            return;
-                        }
-                        screenshot = screenshotSrc || '';
+            // 获取截图数据
+            const previewImg = document.querySelector('#screenshot-preview img');
+            let screenshot = '';
+            
+            if (previewImg) {
+                const base64Data = previewImg.getAttribute('data-base64');
+                if (base64Data) {
+                    screenshot = base64Data;
+                } else {
+                    const screenshotSrc = previewImg.src;
+                    if (screenshotSrc && !screenshotSrc.startsWith('data:')) {
+                        alert('截图还在处理中，请稍等片刻后再发布，或重新生成截图');
+                        return;
                     }
+                    screenshot = screenshotSrc || '';
+                }
+            }
+            
+            try {
+                if (currentEditingAppId) {
+                    // 编辑模式
+                    const app = cloudData.apps.find(a => a.id === currentEditingAppId);
+                    if (app) {
+                        app.name = name;
+                        app.description = description;
+                        app.category = category;
+                        app.screenshot = screenshot;
+                    }
+                } else {
+                    // 发布新应用模式
+                    const newApp = {
+                        id: Date.now(),
+                        name,
+                        url,
+                        description,
+                        category,
+                        author: currentUser.username,
+                        authorId: currentUser.id,
+                        screenshot,
+                        likes: [],
+                        favorites: [],
+                        comments: [],
+                        createdAt: new Date().toISOString()
+                    };
+                    cloudData.apps.push(newApp);
                 }
 
-                const newApp = {
-                    id: Date.now(),
-                    name,
-                    url,
-                    description,
-                    category,
-                    author: currentUser.username,
-                    authorId: currentUser.id,
-                    screenshot,
-                    likes: [],
-                    favorites: [],
-                    comments: [],
-                    createdAt: new Date().toISOString()
-                };
-
-                cloudData.apps.push(newApp);
                 await syncData();
-
                 closeModal('publish-modal');
-                alert('应用发布成功！');
+                alert(currentEditingAppId ? '应用更新成功！' : '应用发布成功！');
                 loadApps();
 
             } catch (error) {
-                alert('发布失败: ' + error.message);
+                alert('操作失败: ' + error.message);
+            } finally {
+                currentEditingAppId = null; // 操作完成后重置
             }
         }
 
