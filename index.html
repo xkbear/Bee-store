@@ -1230,7 +1230,7 @@
                         category: '工具',
                         author: 'Beebee AI',
                         authorId: 1,
-                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://portal.2brain.ai/',
+                        screenshot: '',
                         likes: [],
                         favorites: [],
                         comments: [],
@@ -1244,7 +1244,7 @@
                         category: '工具',
                         author: 'Beebee AI',
                         authorId: 1,
-                        screenshot: 'https://image.thum.io/get/width/1200/crop/800/noanimate/https://beebee.com',
+                        screenshot: '',
                         likes: [],
                         favorites: [],
                         comments: [],
@@ -1374,7 +1374,7 @@
                         </div>
                     ` : ''}
                     <div class="app-screenshot">
-                        ${app.screenshot ? 
+                        ${app.screenshot && app.screenshot.trim() ? 
                             `<img src="${app.screenshot}" alt="${app.name}" onerror="this.style.display='none'; this.parentElement.innerHTML='<div class=\\'placeholder\\'><div style=\\'font-size: 2rem;\\'>🌐</div><div>暂无截图</div></div>'">` :
                             '<div class="placeholder"><div style="font-size: 2rem;">🌐</div><div>暂无截图</div></div>'
                         }
@@ -1820,7 +1820,25 @@
             }
 
             try {
-                const screenshot = document.querySelector('#screenshot-preview img')?.src || '';
+                // 获取截图数据 - 优先使用base64数据
+                const previewImg = document.querySelector('#screenshot-preview img');
+                let screenshot = '';
+                
+                if (previewImg) {
+                    // 优先使用base64数据（已经转换好的）
+                    const base64Data = previewImg.getAttribute('data-base64');
+                    if (base64Data) {
+                        screenshot = base64Data;
+                    } else {
+                        // 如果没有base64数据，提示用户重新生成截图
+                        const screenshotSrc = previewImg.src;
+                        if (screenshotSrc && !screenshotSrc.startsWith('data:')) {
+                            alert('截图还在处理中，请稍等片刻后再发布，或重新生成截图');
+                            return;
+                        }
+                        screenshot = screenshotSrc || '';
+                    }
+                }
 
                 const newApp = {
                     id: Date.now(),
@@ -1847,6 +1865,35 @@
             } catch (error) {
                 alert('发布失败: ' + error.message);
             }
+        }
+
+        // 将图片URL转换为Base64
+        function imageUrlToBase64(url, callback) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            
+            img.crossOrigin = 'anonymous'; // 允许跨域
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0);
+                
+                try {
+                    const base64 = canvas.toDataURL('image/png');
+                    callback(base64);
+                } catch (e) {
+                    console.error('转换Base64失败:', e);
+                    callback(null);
+                }
+            };
+            
+            img.onerror = function() {
+                console.error('图片加载失败:', url);
+                callback(null);
+            };
+            
+            img.src = url;
         }
 
         // 生成截图
@@ -1888,6 +1935,56 @@
                 
                 img.onload = function() {
                     preview.innerHTML = `<img src="${screenshotUrl}" alt="网站截图">`;
+                    
+                    // 显示转换状态
+                    const statusDiv = document.createElement('div');
+                    statusDiv.style.cssText = 'position: absolute; bottom: 8px; left: 8px; background: rgba(255,149,0,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;';
+                    statusDiv.textContent = '正在优化截图...';
+                    preview.style.position = 'relative';
+                    preview.appendChild(statusDiv);
+                    
+                    // 尝试将截图转换为Base64以便存储
+                    imageUrlToBase64(screenshotUrl, function(base64) {
+                        // 移除状态提示
+                        if (statusDiv.parentNode) {
+                            statusDiv.remove();
+                        }
+                        
+                        if (base64) {
+                            // 如果转换成功，替换预览图片的src为base64
+                            const previewImg = preview.querySelector('img');
+                            if (previewImg) {
+                                previewImg.src = base64;
+                                previewImg.setAttribute('data-base64', base64);
+                                
+                                // 显示成功状态
+                                const successDiv = document.createElement('div');
+                                successDiv.style.cssText = 'position: absolute; bottom: 8px; left: 8px; background: rgba(40,167,69,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;';
+                                successDiv.textContent = '✓ 截图已就绪';
+                                preview.appendChild(successDiv);
+                                
+                                // 3秒后移除成功提示
+                                setTimeout(() => {
+                                    if (successDiv.parentNode) {
+                                        successDiv.remove();
+                                    }
+                                }, 3000);
+                            }
+                        } else {
+                            // 转换失败的提示
+                            const errorDiv = document.createElement('div');
+                            errorDiv.style.cssText = 'position: absolute; bottom: 8px; left: 8px; background: rgba(220,53,69,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;';
+                            errorDiv.textContent = '⚠ 截图优化失败';
+                            preview.appendChild(errorDiv);
+                            
+                            // 5秒后移除错误提示
+                            setTimeout(() => {
+                                if (errorDiv.parentNode) {
+                                    errorDiv.remove();
+                                }
+                            }, 5000);
+                        }
+                    });
                 };
                 
                 img.onerror = function() {
@@ -1934,7 +2031,9 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 const preview = document.getElementById('screenshot-preview');
-                preview.innerHTML = `<img src="${e.target.result}" alt="上传的截图">`;
+                const base64Data = e.target.result;
+                const img = `<img src="${base64Data}" alt="上传的截图" data-base64="${base64Data}">`;
+                preview.innerHTML = img;
             };
             reader.readAsDataURL(file);
         }
