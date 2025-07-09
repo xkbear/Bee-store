@@ -904,7 +904,6 @@
                         </div>
                         <button class="btn btn-secondary" onclick="showMyApps()">我的应用</button>
                         <button class="btn btn-secondary" onclick="showMyFavorites()">我的收藏</button>
-                        <button class="btn btn-secondary" onclick="syncData()">同步数据</button>
                         <button class="btn btn-secondary" onclick="logout()">退出</button>
                     </div>
                 </div>
@@ -1014,9 +1013,6 @@
                 </button>
                 <button class="mobile-nav-item" onclick="showMyFavorites(); closeMobileMenu();">
                     ⭐ 我的收藏
-                </button>
-                <button class="mobile-nav-item" onclick="syncData(); closeMobileMenu();">
-                    ☁️ 同步数据
                 </button>
                 <button class="mobile-nav-item" onclick="logout(); closeMobileMenu();">
                     🚪 退出登录
@@ -1625,7 +1621,7 @@
 
         // 显示/隐藏评论
         function showComments(appId) {
-            const commentsSection = document.getElementById(`comments-${app.id}`);
+            const commentsSection = document.getElementById(`comments-${appId}`);
             if (commentsSection.style.display === 'none') {
                 commentsSection.style.display = 'block';
             } else {
@@ -1640,7 +1636,7 @@
                 return;
             }
 
-            const input = document.getElementById(`comment-input-${app.id}`);
+            const input = document.getElementById(`comment-input-${appId}`);
             const content = input.value.trim();
             
             if (!content) {
