@@ -1287,11 +1287,17 @@
                 
             } catch (error) {
                 console.error('初始化失败:', error);
-                updateStatus('❌ 云端连接失败', 'error');
+                updateStatus('❌ 云端连接失败，使用本地数据', 'error');
                 // 使用本地数据或示例数据
                 initLocalData();
                 showGuestNav();
                 loadApps();
+                updateStats();
+                
+                // 提示用户检查网络连接
+                setTimeout(() => {
+                    console.log('提示：如果是首次访问或环境变量未配置，这是正常现象。数据将使用本地存储。');
+                }, 2000);
             }
         }
 
@@ -1358,8 +1364,15 @@
 
         // 更新统计信息
         function updateStats() {
-            document.getElementById('total-apps').textContent = cloudData.apps.length;
-            document.getElementById('total-users').textContent = cloudData.users.length;
+            const totalAppsElement = document.getElementById('total-apps');
+            const totalUsersElement = document.getElementById('total-users');
+            
+            if (totalAppsElement) {
+                totalAppsElement.textContent = cloudData.apps ? cloudData.apps.length : 0;
+            }
+            if (totalUsersElement) {
+                totalUsersElement.textContent = cloudData.users ? cloudData.users.length : 0;
+            }
         }
 
         // 设置搜索事件
@@ -1926,6 +1939,7 @@
                 localStorage.setItem('currentUser', JSON.stringify(newUser));
                 showUserNav();
                 closeModal('register-modal');
+                updateStats(); // 立即更新统计信息
                 alert('注册成功！');
 
             } catch (error) {
@@ -1950,8 +1964,10 @@
             let screenshot = '';
             
             if (previewImg) {
+                // 优先使用 data-url（手动上传的图片），然后是 data-base64（API生成的图片），最后是 src
                 const urlData = previewImg.getAttribute('data-url');
-                screenshot = urlData || previewImg.src || '';
+                const base64Data = previewImg.getAttribute('data-base64');
+                screenshot = urlData || base64Data || previewImg.src || '';
             }
             
             try {
@@ -1985,6 +2001,7 @@
 
                 await syncData();
                 closeModal('publish-modal');
+                updateStats(); // 立即更新统计信息
                 alert(currentEditingAppId ? '应用更新成功！' : '应用发布成功！');
                 loadApps();
 
@@ -2045,9 +2062,9 @@
 
             // 使用多个备用截图服务
             const screenshotServices = [
+                `/.netlify/functions/screenshot-proxy?url=${encodeURIComponent(url)}`,
                 `https://image.thum.io/get/width/1200/crop/800/noanimate/${encodeURIComponent(url)}`,
-                `https://mini.s-shot.ru/1200x800/PNG/?${encodeURIComponent(url)}`,
-                `https://api.urlbox.io/v1/ca482d7e-9417-4569-90fe-80f7c5e1c781/png?url=${encodeURIComponent(url)}&width=1200&height=800`
+                `https://mini.s-shot.ru/1200x800/PNG/?${encodeURIComponent(url)}`
             ];
 
             let currentServiceIndex = 0;
@@ -2116,6 +2133,7 @@
                 };
                 
                 img.onerror = function() {
+                    console.log(`截图服务 ${currentServiceIndex + 1} 失败: ${screenshotUrl}`);
                     currentServiceIndex++;
                     setTimeout(tryNextService, 1000);
                 };
