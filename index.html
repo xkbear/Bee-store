@@ -1266,13 +1266,52 @@
                 if (storedUser) {
                     const userData = JSON.parse(storedUser);
                     // 验证用户是否仍然存在
-                    const user = cloudData.users.find(u => u.id === userData.id);
+                    let user = cloudData.users.find(u => u.id === userData.id);
+                    
                     if (user) {
                         currentUser = user;
                         showUserNav();
                     } else {
-                        localStorage.removeItem('currentUser');
-                        showGuestNav();
+                        // 用户在云端不存在，可能是数据同步问题
+                        console.warn('本地用户在云端不存在，尝试恢复用户数据:', userData.username);
+                        
+                        // 检查是否是用户名重复（可能是ID冲突）
+                        const existingUserByName = cloudData.users.find(u => u.username === userData.username);
+                        if (existingUserByName) {
+                            // 用户名存在但ID不同，使用云端用户数据
+                            currentUser = existingUserByName;
+                            localStorage.setItem('currentUser', JSON.stringify(existingUserByName));
+                            showUserNav();
+                            alert('检测到用户数据同步问题，已自动修复登录状态');
+                        } else {
+                            // 尝试恢复用户到云端数据库
+                            const confirmRestore = confirm(
+                                `检测到您的用户数据可能因同步问题丢失。\n` +
+                                `用户名: ${userData.username}\n` +
+                                `是否尝试恢复用户数据？\n\n` +
+                                `点击"确定"恢复，点击"取消"重新注册`
+                            );
+                            
+                            if (confirmRestore) {
+                                // 恢复用户数据到云端
+                                cloudData.users.push(userData);
+                                currentUser = userData;
+                                showUserNav();
+                                
+                                // 立即同步到云端
+                                syncData().then(() => {
+                                    alert('用户数据已恢复并同步到云端');
+                                }).catch(error => {
+                                    console.error('恢复用户数据失败:', error);
+                                    alert('用户数据恢复失败，请重新注册');
+                                    localStorage.removeItem('currentUser');
+                                    showGuestNav();
+                                });
+                            } else {
+                                localStorage.removeItem('currentUser');
+                                showGuestNav();
+                            }
+                        }
                     }
                 } else {
                     showGuestNav();
@@ -1348,17 +1387,33 @@
         }
 
         // 同步数据到云端
-        async function syncData() {
-            updateStatus('☁️ 正在同步...', 'syncing');
+        async function syncData(retryCount = 0) {
+            const maxRetries = 3;
+            
+            if (retryCount === 0) {
+                updateStatus('☁️ 正在同步...', 'syncing');
+            } else {
+                updateStatus(`☁️ 重试同步 (${retryCount}/${maxRetries})...`, 'syncing');
+            }
             
             try {
                 cloudData.lastSync = new Date().toISOString();
                 await cloudStorage.saveData(cloudData);
                 updateStatus('☁️ 同步成功', 'connected');
                 updateStats();
+                return true;
             } catch (error) {
-                updateStatus('❌ 同步失败', 'error');
-                alert('同步失败: ' + error.message);
+                console.error(`同步失败 (尝试 ${retryCount + 1}/${maxRetries + 1}):`, error);
+                
+                if (retryCount < maxRetries) {
+                    // 指数退避重试：第一次1秒，第二次2秒，第三次4秒
+                    const delay = Math.pow(2, retryCount) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return await syncData(retryCount + 1);
+                } else {
+                    updateStatus('❌ 同步失败', 'error');
+                    throw error;
+                }
             }
         }
 
@@ -1923,8 +1978,9 @@
                 return;
             }
 
+            let newUser;
             try {
-                const newUser = {
+                newUser = {
                     id: Date.now(),
                     username,
                     email,
@@ -1932,17 +1988,41 @@
                     createdAt: new Date().toISOString()
                 };
 
+                // 添加用户到本地数据
                 cloudData.users.push(newUser);
-                await syncData();
-
+                
+                // 立即设置当前用户和本地存储（确保即使同步失败也能保持登录状态）
                 currentUser = newUser;
                 localStorage.setItem('currentUser', JSON.stringify(newUser));
                 showUserNav();
                 closeModal('register-modal');
-                updateStats(); // 立即更新统计信息
-                alert('注册成功！');
+                updateStats();
+
+                // 尝试同步到云端，但不阻塞用户体验
+                updateStatus('☁️ 正在保存用户数据...', 'syncing');
+                
+                try {
+                    await syncData();
+                    alert('注册成功！用户数据已同步到云端');
+                } catch (syncError) {
+                    console.error('用户数据同步失败:', syncError);
+                    alert('注册成功！但数据同步失败，数据已保存到本地。请检查网络连接。');
+                    updateStatus('⚠️ 数据仅保存在本地', 'error');
+                    
+                    // 设置定时重试同步
+                    setTimeout(async () => {
+                        try {
+                            await syncData();
+                            updateStatus('☁️ 数据同步成功', 'connected');
+                        } catch (retryError) {
+                            console.error('重试同步失败:', retryError);
+                        }
+                    }, 5000); // 5秒后重试
+                }
 
             } catch (error) {
+                // 移除已添加的用户数据（如果添加失败）
+                cloudData.users = cloudData.users.filter(u => u.id !== newUser?.id);
                 alert('注册失败: ' + error.message);
             }
         }
@@ -1999,11 +2079,32 @@
                     cloudData.apps.push(newApp);
                 }
 
-                await syncData();
+                // 先更新UI，确保用户能立即看到变化
                 closeModal('publish-modal');
-                updateStats(); // 立即更新统计信息
-                alert(currentEditingAppId ? '应用更新成功！' : '应用发布成功！');
+                updateStats();
                 loadApps();
+
+                // 然后同步到云端
+                updateStatus('☁️ 正在保存数据...', 'syncing');
+                
+                try {
+                    await syncData();
+                    alert(currentEditingAppId ? '应用更新成功！数据已同步到云端' : '应用发布成功！数据已同步到云端');
+                } catch (syncError) {
+                    console.error('数据同步失败:', syncError);
+                    alert((currentEditingAppId ? '应用已更新' : '应用已发布') + '，但数据同步失败。数据已保存到本地，请检查网络连接。');
+                    updateStatus('⚠️ 数据仅保存在本地', 'error');
+                    
+                    // 设置定时重试同步
+                    setTimeout(async () => {
+                        try {
+                            await syncData();
+                            updateStatus('☁️ 数据同步成功', 'connected');
+                        } catch (retryError) {
+                            console.error('重试同步失败:', retryError);
+                        }
+                    }, 5000);
+                }
 
             } catch (error) {
                 alert('操作失败: ' + error.message);
