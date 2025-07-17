@@ -238,6 +238,9 @@
             transition: all 0.3s ease;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
             position: relative;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
 
         .app-card:hover {
@@ -276,6 +279,12 @@
             text-align: center;
         }
 
+        .app-info {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
         .app-info h3 {
             font-size: 1.2rem;
             margin-bottom: 0.5rem;
@@ -289,7 +298,6 @@
             margin-bottom: 0.5rem;
             line-height: 1.4;
             position: relative;
-            min-height: 2.52rem; /* 确保至少两行文字的高度，保持卡片对齐 */
         }
 
         .app-description.collapsed {
@@ -577,7 +585,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 1rem;
+            margin-top: auto;
             padding: 0.75rem 0;
             border-top: 1px solid #f0f0f0;
         }
@@ -1085,11 +1093,6 @@
 
             .header-integrated {
                 margin-bottom: 0.75rem;
-            }
-
-            /* 移动端取消描述的最小高度限制 */
-            .app-description {
-                min-height: auto;
             }
         }
     </style>
