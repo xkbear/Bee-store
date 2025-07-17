@@ -305,6 +305,7 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            min-height: 2.52rem; /* 确保至少占用两行空间：0.9rem * 1.4 * 2 */
         }
 
         .app-description.expanded {
@@ -940,6 +941,12 @@
             .apps-grid {
                 grid-template-columns: 1fr;
             }
+
+            /* 确保移动端卡片也使用flexbox对齐 */
+            .app-card {
+                height: auto;
+                min-height: 400px;
+            }
             
             .modal-content {
                 width: 95%;
@@ -1093,15 +1100,6 @@
 
             .header-integrated {
                 margin-bottom: 0.75rem;
-            }
-
-            /* 移动端取消卡片的flex高度限制 */
-            .app-card {
-                height: auto;
-            }
-            
-            .app-interactions {
-                margin-top: 1rem;
             }
         }
     </style>
