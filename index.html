@@ -334,16 +334,18 @@
         .app-url {
             color: #ff6600;
             text-decoration: none;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             display: inline-flex;
             align-items: center;
             gap: 0.25rem;
-            margin-top: 0.5rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
+            margin-top: 0;
+            margin-left: 0.5rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
             background: rgba(255, 102, 0, 0.1);
             transition: all 0.3s ease;
             font-weight: 500;
+            vertical-align: middle;
         }
 
         .app-url:hover {
@@ -1109,7 +1111,7 @@
                             <div class="user-avatar" id="user-avatar"></div>
                             <span id="user-name"></span>
                         </div>
-                        <button class="btn btn-secondary" onclick="goHome()">🏠 首页</button>
+                        <button class="btn btn-secondary" onclick="goHome()">首页</button>
                         <button class="btn btn-secondary" onclick="showMyApps()">我的应用</button>
                         <button class="btn btn-secondary" onclick="showMyFavorites()">我的收藏</button>
                         <button class="btn btn-secondary" onclick="logout()">退出</button>
@@ -1934,9 +1936,8 @@
                         </div>
                         <div class="app-meta">
                             <span>🏷️ ${app.category}</span>
-                            <span></span>
+                            <a href="${app.url}" target="_blank" class="app-url" title="访问链接：${app.url}">🔗 访问链接</a>
                         </div>
-                        <a href="${app.url}" target="_blank" class="app-url" title="访问链接：${app.url}">🔗 访问链接</a>
                         
                         <!-- 互动按钮 -->
                         <div class="app-interactions">
