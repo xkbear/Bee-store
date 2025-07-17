@@ -289,6 +289,7 @@
             margin-bottom: 0.5rem;
             line-height: 1.4;
             position: relative;
+            min-height: 2.52rem; /* 确保至少两行文字的高度，保持卡片对齐 */
         }
 
         .app-description.collapsed {
@@ -1084,6 +1085,11 @@
 
             .header-integrated {
                 margin-bottom: 0.75rem;
+            }
+
+            /* 移动端取消描述的最小高度限制 */
+            .app-description {
+                min-height: auto;
             }
         }
     </style>
