@@ -158,6 +158,49 @@
             align-items: center;
         }
 
+        .search-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        .header-search .search-input {
+            height: 40px;
+            padding: 0 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            margin-bottom: 0;
+            flex: 1;
+        }
+
+        .header-search .search-input:focus {
+            outline: none;
+            border-color: #ff9500;
+        }
+
+        .header-search .filter-select {
+            height: 40px;
+            padding: 0 0.5rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            background: white;
+        }
+
+        .header-search .filter-select:focus {
+            outline: none;
+            border-color: #ff9500;
+        }
+
         .header-stats {
             flex: 0 0 auto;
             display: flex;
@@ -1042,7 +1085,7 @@
                         <option value="name">按名称</option>
                         <option value="author">按作者</option>
                     </select>
-                    <button class="btn btn-primary" onclick="searchApps()">搜索</button>
+                    <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
                 </div>
                 
                 <div class="header-stats">
@@ -1625,24 +1668,39 @@
                     const appId = desc.id.replace('desc-', '');
                     const toggleButton = document.getElementById(`toggle-${appId}`);
                     
-                    // 临时展开来测量实际高度
-                    desc.style.display = 'block';
-                    desc.style.webkitLineClamp = 'unset';
-                    const fullHeight = desc.scrollHeight;
+                    if (!toggleButton) return;
                     
-                    // 恢复2行限制来测量限制高度
-                    desc.style.display = '-webkit-box';
-                    desc.style.webkitLineClamp = '2';
-                    const clampedHeight = desc.scrollHeight;
+                    // 创建临时元素来测量完整文本高度
+                    const tempDiv = document.createElement('div');
+                    tempDiv.style.cssText = `
+                        position: absolute;
+                        visibility: hidden;
+                        width: ${desc.offsetWidth}px;
+                        font-size: ${window.getComputedStyle(desc).fontSize};
+                        font-family: ${window.getComputedStyle(desc).fontFamily};
+                        line-height: ${window.getComputedStyle(desc).lineHeight};
+                        padding: 0;
+                        margin: 0;
+                        border: none;
+                    `;
+                    tempDiv.textContent = desc.textContent;
+                    document.body.appendChild(tempDiv);
                     
-                    // 如果实际高度大于限制高度，显示展开按钮
-                    if (fullHeight > clampedHeight + 5) { // 5px的容差
+                    const fullHeight = tempDiv.offsetHeight;
+                    document.body.removeChild(tempDiv);
+                    
+                    // 获取2行的预期高度（行高 * 2）
+                    const lineHeight = parseFloat(window.getComputedStyle(desc).lineHeight);
+                    const twoLineHeight = lineHeight * 2;
+                    
+                    // 如果完整高度超过2行高度，显示展开按钮
+                    if (fullHeight > twoLineHeight + 5) { // 5px容差
                         toggleButton.style.display = 'inline-block';
                     } else {
                         toggleButton.style.display = 'none';
                     }
                 });
-            }, 100);
+            }, 200);
         }
 
         // 显示应用
