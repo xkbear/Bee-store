@@ -296,6 +296,26 @@
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .app-description.collapsed.has-overflow::after {
+            content: '...展开';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(to right, transparent, white 30%, white);
+            color: #ff9500;
+            font-size: 0.85rem;
+            padding-left: 20px;
+            text-decoration: underline;
+            pointer-events: auto;
+            z-index: 2;
+        }
+
+        .app-description.collapsed.has-overflow::after:hover {
+            color: #ff6600;
         }
 
         .app-description.expanded {
@@ -1840,13 +1860,17 @@
             const toggleButton = document.getElementById(`toggle-${appId}`);
             
             if (descElement.classList.contains('collapsed')) {
+                // 展开
                 descElement.classList.remove('collapsed');
                 descElement.classList.add('expanded');
-                toggleButton.textContent = '收起';
+                descElement.style.cursor = 'default';
+                if (toggleButton) toggleButton.style.display = 'inline-block';
             } else {
+                // 收起
                 descElement.classList.remove('expanded');
                 descElement.classList.add('collapsed');
-                toggleButton.textContent = '展开';
+                descElement.style.cursor = 'pointer';
+                if (toggleButton) toggleButton.style.display = 'none';
             }
         }
 
@@ -1859,7 +1883,8 @@
                     const appId = desc.id.replace('desc-', '');
                     const toggleButton = document.getElementById(`toggle-${appId}`);
                     
-                    if (!toggleButton) return;
+                    // 获取纯文本内容
+                    const textContent = desc.textContent.trim();
                     
                     // 创建临时元素来测量完整文本高度
                     const tempDiv = document.createElement('div');
@@ -1874,7 +1899,7 @@
                         margin: 0;
                         border: none;
                     `;
-                    tempDiv.textContent = desc.textContent;
+                    tempDiv.textContent = textContent;
                     document.body.appendChild(tempDiv);
                     
                     const fullHeight = tempDiv.offsetHeight;
@@ -1884,11 +1909,24 @@
                     const lineHeight = parseFloat(window.getComputedStyle(desc).lineHeight);
                     const twoLineHeight = lineHeight * 2;
                     
-                    // 如果完整高度超过2行高度，显示展开按钮
+                    // 如果完整高度超过2行高度，显示展开功能
                     if (fullHeight > twoLineHeight + 5) { // 5px容差
-                        toggleButton.style.display = 'inline-block';
+                        desc.classList.add('has-overflow');
+                        desc.style.cursor = 'pointer';
+                        
+                        // 添加点击事件监听器（避免重复添加）
+                        if (!desc.hasAttribute('data-click-added')) {
+                            desc.addEventListener('click', function() {
+                                toggleDescription(appId);
+                            });
+                            desc.setAttribute('data-click-added', 'true');
+                        }
+                        
+                        if (toggleButton) toggleButton.style.display = 'none';
                     } else {
-                        toggleButton.style.display = 'none';
+                        desc.classList.remove('has-overflow');
+                        desc.style.cursor = 'default';
+                        if (toggleButton) toggleButton.style.display = 'none';
                     }
                 });
             }, 200);
@@ -1928,8 +1966,8 @@
                     </div>
                     <div class="app-info">
                         <h3>${app.name}</h3>
-                        <div class="app-description collapsed" id="desc-${app.id}">${app.description}</div>
-                        <button class="description-toggle" onclick="toggleDescription(${app.id})" id="toggle-${app.id}" style="display: none;">展开</button>
+                        <div class="app-description collapsed" id="desc-${app.id}" data-full-text="${app.description.replace(/"/g, '&quot;')}">${app.description}</div>
+                        <button class="description-toggle" onclick="toggleDescription(${app.id})" id="toggle-${app.id}" style="display: none;">收起</button>
                         <div class="app-meta">
                             <span>👤 ${app.author}</span>
                             <span>📅 ${new Date(app.createdAt).toLocaleDateString()}</span>
