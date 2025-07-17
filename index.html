@@ -310,6 +310,8 @@
 
         .app-description.expanded {
             display: block;
+            -webkit-line-clamp: unset;
+            -webkit-box-orient: unset;
         }
 
         .description-toggle {
@@ -319,8 +321,10 @@
             cursor: pointer;
             font-size: 0.85rem;
             padding: 0;
-            margin-top: 0.25rem;
+            margin-left: 0.25rem;
             text-decoration: underline;
+            display: inline;
+            vertical-align: baseline;
         }
 
         .description-toggle:hover {
@@ -1862,7 +1866,7 @@
             } else {
                 descElement.classList.remove('expanded');
                 descElement.classList.add('collapsed');
-                toggleButton.textContent = '展开';
+                toggleButton.textContent = '...展开';
             }
         }
 
@@ -1877,6 +1881,10 @@
                     
                     if (!toggleButton) return;
                     
+                    // 获取描述文本内容（排除按钮文本）
+                    const textNodes = Array.from(desc.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+                    const descriptionText = textNodes.map(node => node.textContent).join('').trim();
+                    
                     // 创建临时元素来测量完整文本高度
                     const tempDiv = document.createElement('div');
                     tempDiv.style.cssText = `
@@ -1890,7 +1898,7 @@
                         margin: 0;
                         border: none;
                     `;
-                    tempDiv.textContent = desc.textContent;
+                    tempDiv.textContent = descriptionText;
                     document.body.appendChild(tempDiv);
                     
                     const fullHeight = tempDiv.offsetHeight;
@@ -1902,7 +1910,7 @@
                     
                     // 如果完整高度超过2行高度，显示展开按钮
                     if (fullHeight > twoLineHeight + 5) { // 5px容差
-                        toggleButton.style.display = 'inline-block';
+                        toggleButton.style.display = 'inline';
                     } else {
                         toggleButton.style.display = 'none';
                     }
@@ -1944,8 +1952,10 @@
                     </div>
                     <div class="app-info">
                         <h3>${app.name}</h3>
-                        <div class="app-description collapsed" id="desc-${app.id}">${app.description}</div>
-                        <button class="description-toggle" onclick="toggleDescription(${app.id})" id="toggle-${app.id}" style="display: none;">展开</button>
+                        <div class="app-description collapsed" id="desc-${app.id}">
+                            ${app.description}
+                            <button class="description-toggle" onclick="toggleDescription(${app.id})" id="toggle-${app.id}" style="display: none;">...展开</button>
+                        </div>
                         <div class="app-meta">
                             <span>👤 ${app.author}</span>
                             <span>📅 ${new Date(app.createdAt).toLocaleDateString()}</span>
