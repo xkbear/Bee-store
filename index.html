@@ -334,14 +334,22 @@
         .app-url {
             color: #ff6600;
             text-decoration: none;
-            font-size: 0.85rem;
-            word-break: break-all;
-            display: block;
+            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
             margin-top: 0.5rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            background: rgba(255, 102, 0, 0.1);
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
 
         .app-url:hover {
-            text-decoration: underline;
+            background: rgba(255, 102, 0, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(255, 102, 0, 0.2);
         }
 
         .app-actions {
@@ -1928,7 +1936,7 @@
                             <span>🏷️ ${app.category}</span>
                             <span></span>
                         </div>
-                        <a href="${app.url}" target="_blank" class="app-url">${app.url}</a>
+                        <a href="${app.url}" target="_blank" class="app-url" title="访问链接：${app.url}">🔗 访问链接</a>
                         
                         <!-- 互动按钮 -->
                         <div class="app-interactions">
