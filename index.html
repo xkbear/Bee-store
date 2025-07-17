@@ -116,31 +116,28 @@
             padding: 1rem 0; /* 减少顶部padding */
         }
 
-        .page-title {
-            text-align: center;
-            color: #333;
-            font-size: 2rem; /* 减小字体 */
-            margin-bottom: 0.5rem; /* 减少间距 */
-        }
 
-        .page-subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 1rem; /* 减少间距 */
-            font-size: 1rem;
-        }
 
         /* 头部整合布局 */
         .header-integrated {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 2rem;
             background: #f8f9fa;
             border: 1px solid #e9ecef;
             border-radius: 12px;
             padding: 1rem 1.5rem;
             margin-bottom: 1.5rem; /* 减少间距 */
+        }
+
+        /* 桌面端布局 */
+        .desktop-layout {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
+        }
+
+        /* 移动端布局默认隐藏 */
+        .mobile-layout {
+            display: none;
         }
 
         .header-slogan {
@@ -948,24 +945,78 @@
 
             /* 头部整合响应式 */
             .header-integrated {
-                flex-direction: column;
-                gap: 1rem;
-                align-items: stretch;
+                padding: 0.75rem 1rem;
+                margin-bottom: 1rem;
             }
 
-            .header-slogan {
-                text-align: center;
-                font-size: 1rem;
+            /* 移动端：隐藏桌面布局，显示移动布局 */
+            .desktop-layout {
+                display: none;
             }
 
-            .header-search {
-                flex-direction: column;
+            .mobile-layout {
+                display: block;
+            }
+
+            /* 移动端第一行：标题和搜索框 */
+            .mobile-header-row {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .mobile-header-row .header-slogan {
+                flex: 0 0 auto;
+                font-size: 0.9rem;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .mobile-header-row .search-input {
+                flex: 1;
+                min-width: 0;
+                height: 36px;
+                font-size: 0.9rem;
+                padding: 0 0.5rem;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                box-sizing: border-box;
+            }
+
+            .mobile-header-row .search-input:focus {
+                outline: none;
+                border-color: #ff9500;
+            }
+
+            /* 移动端第二行：筛选器和搜索按钮 */
+            .mobile-filters-row {
+                display: flex;
                 gap: 0.5rem;
+                align-items: center;
             }
 
-            .header-stats {
-                justify-content: center;
-                gap: 2rem;
+            .mobile-filters-row .filter-select {
+                height: 36px;
+                font-size: 0.85rem;
+                flex: 1;
+                padding: 0 0.5rem;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                box-sizing: border-box;
+                background: white;
+            }
+
+            .mobile-filters-row .filter-select:focus {
+                outline: none;
+                border-color: #ff9500;
+            }
+
+            .mobile-filters-row .search-btn {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+                flex-shrink: 0;
             }
 
             .interaction-group {
@@ -986,13 +1037,7 @@
                 margin-bottom: 0;
             }
 
-            .page-title {
-                font-size: 2rem;
-            }
 
-            .page-subtitle {
-                font-size: 1rem;
-            }
 
             .stats-row {
                 flex-direction: column;
@@ -1016,6 +1061,15 @@
 
             body.no-scroll {
                 overflow: hidden;
+            }
+
+            /* 进一步减少移动端的间距 */
+            .main-content {
+                padding: 0.5rem 0;
+            }
+
+            .header-integrated {
+                margin-bottom: 0.75rem;
             }
         }
     </style>
@@ -1064,35 +1118,66 @@
         <div class="main-content">
             <!-- 整合的头部：slogan、搜索、统计 -->
             <div class="header-integrated">
-                <div class="header-slogan">🐝 发现精彩作品</div>
-                
-                <div class="header-search">
-                    <input type="text" class="search-input" id="search-input" placeholder="搜索作品名称、描述、创作者...">
-                    <select class="filter-select" id="category-filter">
-                        <option value="">全部分类</option>
-                        <option value="工具">工具</option>
-                        <option value="学习">学习</option>
-                        <option value="游戏">游戏</option>
-                        <option value="艺术">艺术</option>
-                        <option value="科技">科技</option>
-                    </select>
-                    <select class="filter-select" id="sort-filter">
-                        <option value="newest">最新发布</option>
-                        <option value="oldest">最早发布</option>
-                        <option value="name">按名称</option>
-                        <option value="author">按作者</option>
-                    </select>
-                    <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
-                </div>
-                
-                <div class="header-stats">
-                    <div class="stat-compact">
-                        <span class="number" id="total-apps">0</span>
-                        <span class="label">作品总数</span>
+                <!-- 桌面端布局 -->
+                <div class="desktop-layout">
+                    <div class="header-slogan">🐝 发现精彩作品</div>
+                    
+                    <div class="header-search">
+                        <input type="text" class="search-input" id="search-input" placeholder="搜索作品名称、描述、创作者...">
+                        <select class="filter-select" id="category-filter">
+                            <option value="">全部分类</option>
+                            <option value="工具">工具</option>
+                            <option value="学习">学习</option>
+                            <option value="游戏">游戏</option>
+                            <option value="艺术">艺术</option>
+                            <option value="科技">科技</option>
+                        </select>
+                        <select class="filter-select" id="sort-filter">
+                            <option value="newest">最新发布</option>
+                            <option value="oldest">最早发布</option>
+                            <option value="name">按名称</option>
+                            <option value="author">按作者</option>
+                        </select>
+                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
                     </div>
-                    <div class="stat-compact">
-                        <span class="number" id="total-users">0</span>
-                        <span class="label">创作者</span>
+                    
+                    <div class="header-stats">
+                        <div class="stat-compact">
+                            <span class="number" id="total-apps">0</span>
+                            <span class="label">作品总数</span>
+                        </div>
+                        <div class="stat-compact">
+                            <span class="number" id="total-users">0</span>
+                            <span class="label">创作者</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 移动端布局 -->
+                <div class="mobile-layout">
+                    <!-- 第一行：标题和搜索框 -->
+                    <div class="mobile-header-row">
+                        <div class="header-slogan">🐝 发现精彩作品</div>
+                        <input type="text" class="search-input" id="search-input-mobile" placeholder="搜索作品...">
+                    </div>
+                    
+                    <!-- 第二行：筛选器和搜索按钮 -->
+                    <div class="mobile-filters-row">
+                        <select class="filter-select" id="category-filter-mobile">
+                            <option value="">全部分类</option>
+                            <option value="工具">工具</option>
+                            <option value="学习">学习</option>
+                            <option value="游戏">游戏</option>
+                            <option value="艺术">艺术</option>
+                            <option value="科技">科技</option>
+                        </select>
+                        <select class="filter-select" id="sort-filter-mobile">
+                            <option value="newest">最新发布</option>
+                            <option value="oldest">最早发布</option>
+                            <option value="name">按名称</option>
+                            <option value="author">按作者</option>
+                        </select>
+                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
                     </div>
                 </div>
             </div>
@@ -1570,15 +1655,83 @@
 
         // 设置搜索事件
         function setupSearchEvents() {
+            // 桌面端搜索框
             const searchInput = document.getElementById('search-input');
-            searchInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    searchApps();
-                }
-            });
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchApps();
+                    }
+                });
+                searchInput.addEventListener('input', debounce(searchApps, 300));
+            }
 
-            // 实时搜索
-            searchInput.addEventListener('input', debounce(searchApps, 300));
+            // 移动端搜索框
+            const searchInputMobile = document.getElementById('search-input-mobile');
+            if (searchInputMobile) {
+                searchInputMobile.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        searchApps();
+                    }
+                });
+                searchInputMobile.addEventListener('input', debounce(searchApps, 300));
+            }
+
+            // 同步搜索框内容
+            function syncSearchInputs() {
+                const desktopValue = searchInput ? searchInput.value : '';
+                const mobileValue = searchInputMobile ? searchInputMobile.value : '';
+                
+                if (searchInput && searchInputMobile) {
+                    if (document.activeElement === searchInput) {
+                        searchInputMobile.value = desktopValue;
+                    } else if (document.activeElement === searchInputMobile) {
+                        searchInput.value = mobileValue;
+                    }
+                }
+            }
+
+            if (searchInput) searchInput.addEventListener('input', syncSearchInputs);
+            if (searchInputMobile) searchInputMobile.addEventListener('input', syncSearchInputs);
+
+            // 为移动端筛选器添加事件监听
+            const categoryFilterMobile = document.getElementById('category-filter-mobile');
+            const sortFilterMobile = document.getElementById('sort-filter-mobile');
+            
+            if (categoryFilterMobile) {
+                categoryFilterMobile.addEventListener('change', searchApps);
+            }
+            if (sortFilterMobile) {
+                sortFilterMobile.addEventListener('change', searchApps);
+            }
+
+            // 同步桌面端和移动端的筛选器值
+            function syncFilters() {
+                const categoryFilter = document.getElementById('category-filter');
+                const sortFilter = document.getElementById('sort-filter');
+                
+                if (categoryFilter && categoryFilterMobile) {
+                    categoryFilter.addEventListener('change', function() {
+                        categoryFilterMobile.value = this.value;
+                        searchApps();
+                    });
+                    categoryFilterMobile.addEventListener('change', function() {
+                        categoryFilter.value = this.value;
+                    });
+                }
+                
+                if (sortFilter && sortFilterMobile) {
+                    sortFilter.addEventListener('change', function() {
+                        sortFilterMobile.value = this.value;
+                        searchApps();
+                    });
+                    sortFilterMobile.addEventListener('change', function() {
+                        sortFilter.value = this.value;
+                    });
+                }
+            }
+            
+            syncFilters();
         }
 
         // 防抖函数
@@ -1599,11 +1752,40 @@
             loadApps();
         }
 
+        // 获取当前搜索条件（优先移动端，如果移动端可见的话）
+        function getCurrentSearchTerms() {
+            const isMobile = window.innerWidth <= 1024;
+            
+            let searchTerm = '';
+            let categoryFilter = '';
+            let sortFilter = '';
+            
+            if (isMobile) {
+                // 移动端
+                const searchInputMobile = document.getElementById('search-input-mobile');
+                const categoryFilterMobile = document.getElementById('category-filter-mobile');
+                const sortFilterMobile = document.getElementById('sort-filter-mobile');
+                
+                searchTerm = searchInputMobile ? searchInputMobile.value.toLowerCase() : '';
+                categoryFilter = categoryFilterMobile ? categoryFilterMobile.value : '';
+                sortFilter = sortFilterMobile ? sortFilterMobile.value : '';
+            } else {
+                // 桌面端
+                const searchInput = document.getElementById('search-input');
+                const categoryFilterDesktop = document.getElementById('category-filter');
+                const sortFilterDesktop = document.getElementById('sort-filter');
+                
+                searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+                categoryFilter = categoryFilterDesktop ? categoryFilterDesktop.value : '';
+                sortFilter = sortFilterDesktop ? sortFilterDesktop.value : '';
+            }
+            
+            return { searchTerm, categoryFilter, sortFilter };
+        }
+
         // 加载应用
         function loadApps() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const categoryFilter = document.getElementById('category-filter').value;
-            const sortFilter = document.getElementById('sort-filter').value;
+            const { searchTerm, categoryFilter, sortFilter } = getCurrentSearchTerms();
 
             let filteredApps = cloudData.apps;
 
@@ -1817,7 +1999,6 @@
             }
 
             const myApps = cloudData.apps.filter(app => app.authorId === currentUser.id);
-            document.querySelector('.page-title').textContent = '我的应用';
             displayApps(myApps, true);
         }
 
@@ -1831,7 +2012,6 @@
             const myFavorites = cloudData.apps.filter(app => 
                 app.favorites && app.favorites.includes(currentUser.id)
             );
-            document.querySelector('.page-title').textContent = '我的收藏';
             displayApps(myFavorites, false);
         }
 
@@ -2540,12 +2720,30 @@
             loadApps();
         }
 
+        // 重置所有搜索条件
+        function resetSearchConditions() {
+            // 桌面端
+            const searchInput = document.getElementById('search-input');
+            const categoryFilter = document.getElementById('category-filter');
+            const sortFilter = document.getElementById('sort-filter');
+            
+            if (searchInput) searchInput.value = '';
+            if (categoryFilter) categoryFilter.value = '';
+            if (sortFilter) sortFilter.value = 'newest';
+            
+            // 移动端
+            const searchInputMobile = document.getElementById('search-input-mobile');
+            const categoryFilterMobile = document.getElementById('category-filter-mobile');
+            const sortFilterMobile = document.getElementById('sort-filter-mobile');
+            
+            if (searchInputMobile) searchInputMobile.value = '';
+            if (categoryFilterMobile) categoryFilterMobile.value = '';
+            if (sortFilterMobile) sortFilterMobile.value = 'newest';
+        }
+
         // 返回首页
         function goHome() {
-            document.querySelector('.page-title').textContent = '发现精彩作品';
-            document.getElementById('search-input').value = '';
-            document.getElementById('category-filter').value = '';
-            document.getElementById('sort-filter').value = 'newest';
+            resetSearchConditions();
             loadApps();
         }
 
