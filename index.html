@@ -208,6 +208,81 @@
             border-color: #ff9500;
         }
 
+        /* 自定义下拉菜单样式 */
+        .custom-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .dropdown-trigger {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 8px;
+            background: transparent;
+            color: #ff9500;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-trigger:hover {
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .dropdown-trigger.active {
+            background: rgba(255, 149, 0, 0.15);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            min-width: 120px;
+            max-height: 250px;
+            overflow-y: auto;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-item {
+            padding: 0.6rem 0.8rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .dropdown-item.selected {
+            background: rgba(255, 149, 0, 0.2);
+            color: #ff6600;
+            font-weight: 500;
+        }
+
         .header-stats {
             flex: 0 0 auto;
             display: flex;
@@ -1063,6 +1138,34 @@
                 flex-shrink: 0;
             }
 
+            /* 移动端自定义下拉菜单 */
+            .mobile-filters-row .custom-dropdown {
+                flex: 1;
+            }
+
+            .mobile-filters-row .dropdown-trigger {
+                width: 100%;
+                height: 36px;
+                font-size: 1rem;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                background: white;
+            }
+
+            .mobile-filters-row .dropdown-trigger:hover {
+                border-color: #ff9500;
+                background: rgba(255, 149, 0, 0.05);
+            }
+
+            .mobile-filters-row .dropdown-trigger.active {
+                border-color: #ff9500;
+                background: rgba(255, 149, 0, 0.1);
+            }
+
+            .mobile-filters-row .dropdown-menu {
+                min-width: 100%;
+            }
+
             .interaction-group {
                 gap: 0.5rem;
             }
@@ -1167,7 +1270,39 @@
                     
                     <div class="header-search">
                         <input type="text" class="search-input" id="search-input" placeholder="搜索作品名称、描述、创作者...">
-                        <select class="filter-select" id="category-filter">
+                        
+                        <!-- 分类下拉菜单 -->
+                        <div class="custom-dropdown">
+                            <button class="dropdown-trigger" id="category-trigger" onclick="toggleDropdown('category')" title="分类筛选">
+                                🏷️
+                            </button>
+                            <div class="dropdown-menu" id="category-dropdown">
+                                <div class="dropdown-item selected" data-value="">全部分类</div>
+                                <div class="dropdown-item" data-value="工具">🔧 工具</div>
+                                <div class="dropdown-item" data-value="学习">📚 学习</div>
+                                <div class="dropdown-item" data-value="游戏">🎮 游戏</div>
+                                <div class="dropdown-item" data-value="艺术">🎨 艺术</div>
+                                <div class="dropdown-item" data-value="科技">💻 科技</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 排序下拉菜单 -->
+                        <div class="custom-dropdown">
+                            <button class="dropdown-trigger" id="sort-trigger" onclick="toggleDropdown('sort')" title="排序方式">
+                                📅
+                            </button>
+                            <div class="dropdown-menu" id="sort-dropdown">
+                                <div class="dropdown-item selected" data-value="newest">📅 最新发布</div>
+                                <div class="dropdown-item" data-value="oldest">📅 最早发布</div>
+                                <div class="dropdown-item" data-value="name">🔤 按名称</div>
+                                <div class="dropdown-item" data-value="author">👤 按作者</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
+                        
+                        <!-- 隐藏的原始select元素，用于保持功能 -->
+                        <select class="filter-select" id="category-filter" style="display: none;">
                             <option value="">全部分类</option>
                             <option value="工具">工具</option>
                             <option value="学习">学习</option>
@@ -1175,13 +1310,12 @@
                             <option value="艺术">艺术</option>
                             <option value="科技">科技</option>
                         </select>
-                        <select class="filter-select" id="sort-filter">
+                        <select class="filter-select" id="sort-filter" style="display: none;">
                             <option value="newest">最新发布</option>
                             <option value="oldest">最早发布</option>
                             <option value="name">按名称</option>
                             <option value="author">按作者</option>
                         </select>
-                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
                     </div>
                     
                     <div class="header-stats">
@@ -1205,7 +1339,38 @@
                     
                     <!-- 第二行：筛选器和搜索按钮 -->
                     <div class="mobile-filters-row">
-                        <select class="filter-select" id="category-filter-mobile">
+                        <!-- 移动端分类下拉菜单 -->
+                        <div class="custom-dropdown">
+                            <button class="dropdown-trigger" id="category-trigger-mobile" onclick="toggleDropdown('category-mobile')" title="分类筛选">
+                                🏷️
+                            </button>
+                            <div class="dropdown-menu" id="category-dropdown-mobile">
+                                <div class="dropdown-item selected" data-value="">全部分类</div>
+                                <div class="dropdown-item" data-value="工具">🔧 工具</div>
+                                <div class="dropdown-item" data-value="学习">📚 学习</div>
+                                <div class="dropdown-item" data-value="游戏">🎮 游戏</div>
+                                <div class="dropdown-item" data-value="艺术">🎨 艺术</div>
+                                <div class="dropdown-item" data-value="科技">💻 科技</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 移动端排序下拉菜单 -->
+                        <div class="custom-dropdown">
+                            <button class="dropdown-trigger" id="sort-trigger-mobile" onclick="toggleDropdown('sort-mobile')" title="排序方式">
+                                📅
+                            </button>
+                            <div class="dropdown-menu" id="sort-dropdown-mobile">
+                                <div class="dropdown-item selected" data-value="newest">📅 最新发布</div>
+                                <div class="dropdown-item" data-value="oldest">📅 最早发布</div>
+                                <div class="dropdown-item" data-value="name">🔤 按名称</div>
+                                <div class="dropdown-item" data-value="author">👤 按作者</div>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
+                        
+                        <!-- 隐藏的原始select元素，用于保持功能 -->
+                        <select class="filter-select" id="category-filter-mobile" style="display: none;">
                             <option value="">全部分类</option>
                             <option value="工具">工具</option>
                             <option value="学习">学习</option>
@@ -1213,13 +1378,12 @@
                             <option value="艺术">艺术</option>
                             <option value="科技">科技</option>
                         </select>
-                        <select class="filter-select" id="sort-filter-mobile">
+                        <select class="filter-select" id="sort-filter-mobile" style="display: none;">
                             <option value="newest">最新发布</option>
                             <option value="oldest">最早发布</option>
                             <option value="name">按名称</option>
                             <option value="author">按作者</option>
                         </select>
-                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
                     </div>
                 </div>
             </div>
@@ -1589,6 +1753,12 @@
                 // 设置搜索事件
                 setupSearchEvents();
                 
+                // 初始化自定义下拉菜单状态
+                updateDropdownSelection('category', '');
+                updateDropdownSelection('sort', 'newest');
+                updateDropdownSelection('category-mobile', '');
+                updateDropdownSelection('sort-mobile', 'newest');
+                
             } catch (error) {
                 console.error('初始化失败:', error);
                 updateStatus('❌ 云端连接失败，使用本地数据', 'error');
@@ -1597,6 +1767,12 @@
                 showGuestNav();
                 loadApps();
                 updateStats();
+                
+                // 初始化自定义下拉菜单状态
+                updateDropdownSelection('category', '');
+                updateDropdownSelection('sort', 'newest');
+                updateDropdownSelection('category-mobile', '');
+                updateDropdownSelection('sort-mobile', 'newest');
                 
                 // 提示用户检查网络连接
                 setTimeout(() => {
@@ -2798,6 +2974,12 @@
             if (searchInputMobile) searchInputMobile.value = '';
             if (categoryFilterMobile) categoryFilterMobile.value = '';
             if (sortFilterMobile) sortFilterMobile.value = 'newest';
+
+            // 重置自定义下拉菜单的显示状态
+            updateDropdownSelection('category', '');
+            updateDropdownSelection('sort', 'newest');
+            updateDropdownSelection('category-mobile', '');
+            updateDropdownSelection('sort-mobile', 'newest');
         }
 
         // 返回首页
@@ -2820,6 +3002,143 @@
                 closeMobileMenu();
             }
         });
+
+        // 自定义下拉菜单功能
+        function toggleDropdown(type) {
+            const dropdown = document.getElementById(`${type}-dropdown`);
+            const trigger = document.getElementById(`${type}-trigger`);
+            const isShow = dropdown.classList.contains('show');
+            
+            // 关闭所有其他下拉菜单
+            closeAllDropdowns();
+            
+            if (!isShow) {
+                dropdown.classList.add('show');
+                trigger.classList.add('active');
+                
+                // 添加点击事件到下拉菜单项
+                const items = dropdown.querySelectorAll('.dropdown-item');
+                items.forEach(item => {
+                    item.onclick = function() {
+                        selectDropdownItem(type, this);
+                    };
+                });
+            }
+        }
+
+        function selectDropdownItem(type, item) {
+            const value = item.getAttribute('data-value');
+            const dropdown = document.getElementById(`${type}-dropdown`);
+            const trigger = document.getElementById(`${type}-trigger`);
+            
+            // 更新选中状态
+            dropdown.querySelectorAll('.dropdown-item').forEach(i => i.classList.remove('selected'));
+            item.classList.add('selected');
+            
+            // 更新隐藏的select值
+            if (type.includes('category')) {
+                const selectId = type.includes('mobile') ? 'category-filter-mobile' : 'category-filter';
+                document.getElementById(selectId).value = value;
+                
+                // 更新按钮图标（可选）
+                if (value) {
+                    const emoji = item.textContent.split(' ')[0]; // 获取emoji
+                    trigger.textContent = emoji;
+                } else {
+                    trigger.textContent = '🏷️';
+                }
+            } else if (type.includes('sort')) {
+                const selectId = type.includes('mobile') ? 'sort-filter-mobile' : 'sort-filter';
+                document.getElementById(selectId).value = value;
+                
+                // 更新按钮图标
+                if (value === 'newest' || value === 'oldest') {
+                    trigger.textContent = '📅';
+                } else if (value === 'name') {
+                    trigger.textContent = '🔤';
+                } else if (value === 'author') {
+                    trigger.textContent = '👤';
+                }
+            }
+            
+            // 关闭下拉菜单
+            dropdown.classList.remove('show');
+            trigger.classList.remove('active');
+            
+            // 触发搜索
+            searchApps();
+        }
+
+        function closeAllDropdowns() {
+            const dropdowns = document.querySelectorAll('.dropdown-menu');
+            const triggers = document.querySelectorAll('.dropdown-trigger');
+            
+            dropdowns.forEach(dropdown => dropdown.classList.remove('show'));
+            triggers.forEach(trigger => trigger.classList.remove('active'));
+        }
+
+        // 点击外部关闭下拉菜单
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.custom-dropdown')) {
+                closeAllDropdowns();
+            }
+        });
+
+        // 同步桌面端和移动端的筛选器选择
+        function syncCustomDropdowns() {
+            // 同步分类选择
+            const categoryDesktop = document.getElementById('category-filter').value;
+            const categoryMobile = document.getElementById('category-filter-mobile').value;
+            
+            if (categoryDesktop !== categoryMobile) {
+                // 更新移动端
+                updateDropdownSelection('category-mobile', categoryDesktop);
+                document.getElementById('category-filter-mobile').value = categoryDesktop;
+            }
+            
+            // 同步排序选择
+            const sortDesktop = document.getElementById('sort-filter').value;
+            const sortMobile = document.getElementById('sort-filter-mobile').value;
+            
+            if (sortDesktop !== sortMobile) {
+                // 更新移动端
+                updateDropdownSelection('sort-mobile', sortDesktop);
+                document.getElementById('sort-filter-mobile').value = sortDesktop;
+            }
+        }
+
+        function updateDropdownSelection(type, value) {
+            const dropdown = document.getElementById(`${type}-dropdown`);
+            const trigger = document.getElementById(`${type}-trigger`);
+            
+            if (!dropdown || !trigger) return;
+            
+            // 更新选中状态
+            dropdown.querySelectorAll('.dropdown-item').forEach(i => {
+                i.classList.remove('selected');
+                if (i.getAttribute('data-value') === value) {
+                    i.classList.add('selected');
+                    
+                    // 更新按钮图标
+                    if (type.includes('category')) {
+                        if (value) {
+                            const emoji = i.textContent.split(' ')[0];
+                            trigger.textContent = emoji;
+                        } else {
+                            trigger.textContent = '🏷️';
+                        }
+                    } else if (type.includes('sort')) {
+                        if (value === 'newest' || value === 'oldest') {
+                            trigger.textContent = '📅';
+                        } else if (value === 'name') {
+                            trigger.textContent = '🔤';
+                        } else if (value === 'author') {
+                            trigger.textContent = '👤';
+                        }
+                    }
+                }
+            });
+        }
 
         // 初始化应用
         init();
