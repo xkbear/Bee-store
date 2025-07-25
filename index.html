@@ -1651,6 +1651,51 @@
 
         const cloudStorage = new CloudStorage();
 
+        // 数据合并函数
+        function mergeCloudData(remoteData) {
+            // 如果没有本地数据，直接使用远程数据
+            if (!cloudData || !cloudData.users || !cloudData.apps) {
+                return remoteData || { users: [], apps: [], lastSync: null };
+            }
+
+            // 如果没有远程数据，保持本地数据
+            if (!remoteData || !remoteData.users || !remoteData.apps) {
+                return cloudData;
+            }
+
+            const merged = {
+                users: [],
+                apps: [],
+                lastSync: remoteData.lastSync || new Date().toISOString()
+            };
+
+            // 合并用户数据（基于ID和创建时间）
+            const allUsers = [...cloudData.users, ...remoteData.users];
+            const userMap = new Map();
+            
+            allUsers.forEach(user => {
+                const existing = userMap.get(user.id);
+                if (!existing || new Date(user.createdAt) >= new Date(existing.createdAt)) {
+                    userMap.set(user.id, user);
+                }
+            });
+            merged.users = Array.from(userMap.values());
+
+            // 合并应用数据（基于ID和创建时间）
+            const allApps = [...cloudData.apps, ...remoteData.apps];
+            const appMap = new Map();
+            
+            allApps.forEach(app => {
+                const existing = appMap.get(app.id);
+                if (!existing || new Date(app.createdAt) >= new Date(existing.createdAt)) {
+                    appMap.set(app.id, app);
+                }
+            });
+            merged.apps = Array.from(appMap.values());
+
+            return merged;
+        }
+
         // 状态管理
         let statusHideTimeout = null;
         function updateStatus(message, type = 'syncing') {
@@ -1676,8 +1721,8 @@
             updateStatus('☁️ 正在同步数据...', 'syncing');
             
             try {
-                // 从云端加载数据
-                cloudData = await cloudStorage.loadData();
+                // 从云端加载数据并合并
+                cloudData = await mergeCloudData(await cloudStorage.loadData());
                 
                 // 确保数据结构兼容性（为旧数据添加新字段）
                 if (cloudData.apps) {
@@ -1839,6 +1884,17 @@
             
             try {
                 cloudData.lastSync = new Date().toISOString();
+                
+                // 检查数据大小
+                const dataSize = JSON.stringify(cloudData).length;
+                const maxSize = 5 * 1024 * 1024; // 5MB 限制
+                
+                if (dataSize > maxSize) {
+                    console.warn(`数据大小过大: ${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB`);
+                    updateStatus('⚠️ 数据过大，建议清理', 'error');
+                    throw new Error(`数据大小 ${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB 超过限制 ${Math.round(maxSize / 1024 / 1024)}MB`);
+                }
+                
                 await cloudStorage.saveData(cloudData);
                 updateStatus('☁️ 同步成功', 'connected');
                 updateStats();
@@ -2661,10 +2717,22 @@
             let screenshot = '';
             
             if (previewImg) {
-                // 优先使用 data-url（手动上传的图片），然后是 data-base64（API生成的图片），最后是 src
+                // 只使用 data-url 属性，确保只存储URL
                 const urlData = previewImg.getAttribute('data-url');
                 const base64Data = previewImg.getAttribute('data-base64');
-                screenshot = urlData || base64Data || previewImg.src || '';
+                
+                if (urlData) {
+                    screenshot = urlData;
+                } else if (base64Data) {
+                    // 如果存在Base64数据，先上传后获取URL
+                    try {
+                        screenshot = await uploadImageToStorage(base64Data, true);
+                    } catch (error) {
+                        console.error('上传截图失败:', error);
+                        alert('截图上传失败，请重新选择截图');
+                        return;
+                    }
+                }
             }
             
             try {
@@ -2730,33 +2798,60 @@
             }
         }
 
-        // 将图片URL转换为Base64
-        function imageUrlToBase64(url, callback) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            const img = new Image();
-            
-            img.crossOrigin = 'anonymous'; // 允许跨域
-            img.onload = function() {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
+        // 统一图片上传处理函数
+        async function uploadImageToStorage(imageData, isBase64 = false) {
+            try {
+                let base64Payload;
                 
-                try {
-                    const base64 = canvas.toDataURL('image/png');
-                    callback(base64);
-                } catch (e) {
-                    console.error('转换Base64失败:', e);
-                    callback(null);
+                if (isBase64) {
+                    // 如果已经是Base64，提取payload部分
+                    if (imageData.startsWith('data:')) {
+                        base64Payload = imageData.split(',')[1];
+                    } else {
+                        base64Payload = imageData;
+                    }
+                } else {
+                    // 如果是URL，先转换为Base64
+                    const response = await fetch(imageData);
+                    const blob = await response.blob();
+                    
+                    return new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = async function(e) {
+                            base64Payload = e.target.result.split(',')[1];
+                            
+                            try {
+                                const res = await fetch('/.netlify/functions/upload-image', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ image: base64Payload })
+                                });
+                                const result = await res.json();
+                                if (!res.ok) throw new Error(result.error || 'Upload failed');
+                                resolve(result.url);
+                            } catch (err) {
+                                reject(err);
+                            }
+                        };
+                        reader.onerror = reject;
+                        reader.readAsDataURL(blob);
+                    });
                 }
-            };
-            
-            img.onerror = function() {
-                console.error('图片加载失败:', url);
-                callback(null);
-            };
-            
-            img.src = url;
+                
+                // 上传Base64数据
+                const res = await fetch('/.netlify/functions/upload-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Payload })
+                });
+                const result = await res.json();
+                if (!res.ok) throw new Error(result.error || 'Upload failed');
+                
+                return result.url;
+            } catch (error) {
+                console.error('上传图片失败:', error);
+                throw error;
+            }
         }
 
         // 生成截图
@@ -2806,19 +2901,18 @@
                     preview.style.position = 'relative';
                     preview.appendChild(statusDiv);
                     
-                    // 尝试将截图转换为Base64以便存储
-                    imageUrlToBase64(screenshotUrl, function(base64) {
+                    // 上传截图到外部存储
+                    uploadImageToStorage(screenshotUrl, false).then(function(uploadedUrl) {
                         // 移除状态提示
                         if (statusDiv.parentNode) {
                             statusDiv.remove();
                         }
                         
-                        if (base64) {
-                            // 如果转换成功，替换预览图片的src为base64
+                        if (uploadedUrl) {
+                            // 如果上传成功，设置URL
                             const previewImg = preview.querySelector('img');
                             if (previewImg) {
-                                previewImg.src = base64;
-                                previewImg.setAttribute('data-base64', base64);
+                                previewImg.setAttribute('data-url', uploadedUrl);
                                 
                                 // 显示成功状态
                                 const successDiv = document.createElement('div');
@@ -2834,10 +2928,10 @@
                                 }, 3000);
                             }
                         } else {
-                            // 转换失败的提示
+                            // 上传失败的提示
                             const errorDiv = document.createElement('div');
                             errorDiv.style.cssText = 'position: absolute; bottom: 8px; left: 8px; background: rgba(220,53,69,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;';
-                            errorDiv.textContent = '⚠ 截图优化失败';
+                            errorDiv.textContent = '⚠ 截图上传失败';
                             preview.appendChild(errorDiv);
                             
                             // 5秒后移除错误提示
@@ -2847,6 +2941,24 @@
                                 }
                             }, 5000);
                         }
+                    }).catch(function(error) {
+                        // 移除状态提示
+                        if (statusDiv.parentNode) {
+                            statusDiv.remove();
+                        }
+                        
+                        console.error('截图上传失败:', error);
+                        const errorDiv = document.createElement('div');
+                        errorDiv.style.cssText = 'position: absolute; bottom: 8px; left: 8px; background: rgba(220,53,69,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;';
+                        errorDiv.textContent = '⚠ 截图上传失败';
+                        preview.appendChild(errorDiv);
+                        
+                        // 5秒后移除错误提示
+                        setTimeout(() => {
+                            if (errorDiv.parentNode) {
+                                errorDiv.remove();
+                            }
+                        }, 5000);
                     });
                 };
                 
