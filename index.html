@@ -109,6 +109,13 @@
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
+        }
+
+        .btn:disabled:hover {
+            transform: none;
+            box-shadow: none;
+            opacity: 0.6;
         }
 
         /* 主要内容区域 */
@@ -1485,15 +1492,15 @@
             <div>
                 <div class="form-group">
                     <label for="app-name">作品名称 *</label>
-                    <input type="text" id="app-name" placeholder="给你的作品起个名字">
+                    <input type="text" id="app-name" placeholder="给你的作品起个名字" onchange="updatePublishButtonState()" oninput="updatePublishButtonState()">
                 </div>
                 <div class="form-group">
                     <label for="app-url">作品链接 *</label>
-                    <input type="url" id="app-url" placeholder="https://example.com">
+                    <input type="url" id="app-url" placeholder="https://example.com" onchange="updatePublishButtonState()" oninput="updatePublishButtonState()">
                 </div>
                 <div class="form-group">
                     <label for="app-description">作品描述 *</label>
-                    <textarea id="app-description" placeholder="介绍一下你的作品，比如创作灵感、主要功能等..."></textarea>
+                    <textarea id="app-description" placeholder="介绍一下你的作品，比如创作灵感、主要功能等..." onchange="updatePublishButtonState()" oninput="updatePublishButtonState()"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="app-category">分类</label>
@@ -1529,17 +1536,27 @@
                             </label>
                         </div>
                         <div id="screenshot-api-section" style="display: block;">
-                            <button type="button" class="btn btn-secondary" onclick="generateScreenshot()">
-                                🌐 生成网页截图
-                            </button>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-secondary" onclick="generateScreenshot()">
+                                    🌐 生成网页截图
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="clearScreenshot()" style="background: #dc3545; color: white;">
+                                    🗑️ 清除截图
+                                </button>
+                            </div>
                             <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
                                 根据应用链接自动生成网页截图
                             </div>
                         </div>
                         <div id="screenshot-upload-section" style="display: none;">
-                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('screenshot-upload').click()">
-                                📁 上传图片文件
-                            </button>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('screenshot-upload').click()">
+                                    📁 上传图片文件
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="clearScreenshot()" style="background: #dc3545; color: white;">
+                                    🗑️ 清除截图
+                                </button>
+                            </div>
                             <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
                                 支持 JPG、PNG、GIF 格式，最大 5MB
                             </div>
@@ -1717,6 +1734,7 @@
         // 全局变量
         let currentUser = null;
         let currentEditingAppId = null; // 用于跟踪正在编辑的应用ID
+        let isScreenshotReady = false; // 跟踪截图/图片是否准备就绪
         let cloudData = {
             users: [],
             apps: [],
@@ -3245,9 +3263,10 @@
             document.body.classList.remove('no-scroll');
             document.getElementById(modalId).style.display = 'none';
             
-            // 如果是发布模态框，重置表单
+            // 如果是发布模态框，重置表单和状态
             if (modalId === 'publish-modal') {
                 resetPublishModal();
+                currentEditingAppId = null;
             }
         }
 
@@ -3262,6 +3281,81 @@
             // 重置截图方式为API生成
             document.querySelector('input[name="screenshot-method"][value="api"]').checked = true;
             toggleScreenshotMethod();
+            
+            // 重置截图准备状态为true（允许无截图发布）
+            isScreenshotReady = true;
+            updatePublishButtonState();
+        }
+
+        // 更新发布按钮状态
+        function updatePublishButtonState() {
+            const publishBtn = document.getElementById('save-app-btn');
+            if (!publishBtn) return;
+            
+            const name = document.getElementById('app-name').value.trim();
+            const url = document.getElementById('app-url').value.trim();
+            const description = document.getElementById('app-description').value.trim();
+            
+            // 检查必填字段和截图状态
+            const allFieldsValid = name && url && description;
+            const hasScreenshot = hasScreenshotContent();
+            const canPublish = allFieldsValid && (isScreenshotReady || !hasScreenshot);
+            
+            publishBtn.disabled = !canPublish;
+            
+            if (!canPublish) {
+                publishBtn.style.opacity = '0.6';
+                publishBtn.style.cursor = 'not-allowed';
+                publishBtn.style.transform = 'none';
+                publishBtn.style.boxShadow = 'none';
+                
+                if (!allFieldsValid) {
+                    const missingFields = [];
+                    if (!name) missingFields.push('名称');
+                    if (!url) missingFields.push('链接');
+                    if (!description) missingFields.push('描述');
+                    publishBtn.textContent = `请填写: ${missingFields.join('、')}`;
+                } else if (!isScreenshotReady && hasScreenshot) {
+                    publishBtn.textContent = '⏳ 截图处理中...';
+                }
+            } else {
+                publishBtn.style.opacity = '1';
+                publishBtn.style.cursor = 'pointer';
+                publishBtn.style.transform = '';
+                publishBtn.style.boxShadow = '';
+                publishBtn.textContent = currentEditingAppId ? '💾 保存更改' : '🚀 发布';
+            }
+        }
+
+        // 检查是否有截图内容（但未准备就绪）
+        function hasScreenshotContent() {
+            const preview = document.getElementById('screenshot-preview');
+            const hasImg = preview.querySelector('img');
+            const hasLoading = preview.querySelector('.loading');
+            return hasImg || hasLoading;
+        }
+
+        // 设置截图准备就绪状态
+        function setScreenshotReady(ready = true) {
+            isScreenshotReady = ready;
+            updatePublishButtonState();
+        }
+
+        // 清除截图
+        function clearScreenshot() {
+            const preview = document.getElementById('screenshot-preview');
+            const uploadInput = document.getElementById('screenshot-upload');
+            
+            // 重置预览区域
+            preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">📸</div><div>选择截图方式</div></div>';
+            
+            // 清空文件输入
+            if (uploadInput) {
+                uploadInput.value = '';
+            }
+            
+            // 重置截图状态为准备就绪（允许无截图发布）
+            setScreenshotReady(true);
         }
 
         function showLogin() {
@@ -3281,7 +3375,7 @@
             document.getElementById('app-url').readOnly = false;
             document.getElementById('app-url').style.background = '';
             
-            // 重置表单并显示模态框
+            // 重置表单并显示模态框（resetPublishModal中已包含状态重置）
             resetPublishModal();
             showModal('publish-modal');
         }
@@ -3302,14 +3396,21 @@
             
             const preview = document.getElementById('screenshot-preview');
             if (app.screenshot && app.screenshot.trim()) {
-                preview.innerHTML = `<img src="${app.screenshot}" alt="应用截图" data-base64="${app.screenshot}">`;
+                preview.innerHTML = `<img src="${app.screenshot}" alt="应用截图" data-url="${app.screenshot}">`;
+                // 编辑模式下，如果已有截图，标记为准备就绪
+                setScreenshotReady(true);
             } else {
                 preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">📸</div><div>选择截图方式</div></div>';
+                // 没有截图时，标记为准备就绪（可以不需要截图发布）
+                setScreenshotReady(true);
             }
 
             // URL在编辑时不可更改
             document.getElementById('app-url').readOnly = true;
             document.getElementById('app-url').style.background = '#f1f1f1';
+
+            // 更新发布按钮状态
+            updatePublishButtonState();
 
             showModal('publish-modal');
         }
@@ -3693,6 +3794,9 @@
                 return;
             }
 
+            // 设置截图未准备就绪状态
+            setScreenshotReady(false);
+
             // 记录截图API调用开始
             logger.info('开始调用截图API', { 
                 targetUrl: url, 
@@ -3720,6 +3824,9 @@
                         operation: '截图API调用失败'
                     });
                     preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">❌</div><div>截图生成失败，请手动上传图片</div></div>';
+                    
+                    // 所有截图服务都失败，截图未准备就绪
+                    setScreenshotReady(false);
                     return;
                 }
 
@@ -3749,7 +3856,7 @@
                         }
                         
                         if (uploadedUrl) {
-                            // 如果上传成功，设置URL
+                            // 如果上传成功，设置URL并标记截图准备就绪
                             logger.info('截图生成并上传成功', { 
                                 service: screenshotUrl, 
                                 serviceIndex: currentServiceIndex,
@@ -3766,6 +3873,9 @@
                                 successDiv.textContent = '✓ 截图已就绪';
                                 preview.appendChild(successDiv);
                                 
+                                // 设置截图准备就绪
+                                setScreenshotReady(true);
+                                
                                 // 3秒后移除成功提示
                                 setTimeout(() => {
                                     if (successDiv.parentNode) {
@@ -3774,7 +3884,7 @@
                                 }, 3000);
                             }
                         } else {
-                            // 上传失败的提示
+                            // 上传失败，截图未准备就绪
                             logger.warn('截图生成成功但上传失败', { 
                                 service: screenshotUrl, 
                                 serviceIndex: currentServiceIndex,
@@ -3784,6 +3894,9 @@
                             errorDiv.style.cssText = 'position: absolute; bottom: 8px; left: 8px; background: rgba(220,53,69,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;';
                             errorDiv.textContent = '⚠ 截图上传失败';
                             preview.appendChild(errorDiv);
+                            
+                            // 截图上传失败，保持未准备就绪状态
+                            setScreenshotReady(false);
                             
                             // 5秒后移除错误提示
                             setTimeout(() => {
@@ -3809,6 +3922,9 @@
                         errorDiv.style.cssText = 'position: absolute; bottom: 8px; left: 8px; background: rgba(220,53,69,0.9); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;';
                         errorDiv.textContent = '⚠ 截图上传失败';
                         preview.appendChild(errorDiv);
+                        
+                        // 截图上传失败，保持未准备就绪状态
+                        setScreenshotReady(false);
                         
                         // 5秒后移除错误提示
                         setTimeout(() => {
@@ -3857,6 +3973,9 @@
             const file = input.files[0];
             if (!file) return;
 
+            // 设置截图未准备就绪状态
+            setScreenshotReady(false);
+
             // 记录手动上传开始
             logger.info('用户开始手动上传图片', { 
                 fileName: file.name,
@@ -3868,12 +3987,16 @@
             if (!file.type.startsWith('image/')) {
                 logger.warn('用户尝试上传非图片文件', { fileName: file.name, fileType: file.type });
                 alert('请选择图片文件');
+                // 上传失败，保持未准备就绪状态
+                setScreenshotReady(false);
                 return;
             }
 
             if (file.size > 10 * 1024 * 1024) { // 10MB 初始限制，后续会自动压缩
                 logger.warn('用户上传文件过大', { fileName: file.name, fileSize: file.size });
                 alert('图片文件不能超过10MB');
+                // 上传失败，保持未准备就绪状态
+                setScreenshotReady(false);
                 return;
             }
             
@@ -3928,6 +4051,9 @@
                         const img = `<img src="${imgUrl}" alt="上传的截图" data-url="${imgUrl}">`;
                         preview.innerHTML = img;
 
+                        // 图片上传成功，设置截图准备就绪
+                        setScreenshotReady(true);
+
                     } catch (err) {
                         logger.error('手动上传图片失败', { 
                             error: err.message,
@@ -3936,6 +4062,9 @@
                         console.error(err);
                         alert('图片上传失败');
                         preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">❌</div><div>上传失败</div></div>';
+                        
+                        // 图片上传失败，保持未准备就绪状态
+                        setScreenshotReady(false);
                     }
                 };
                 reader.readAsDataURL(compressedFile);
@@ -3944,6 +4073,9 @@
                 console.error(error);
                 alert('图片压缩失败，请尝试其他图片或换个浏览器。');
                 preview.innerHTML = '<div class="placeholder"><div style="font-size: 2rem;">❌</div><div>压缩失败</div></div>';
+                
+                // 图片压缩失败，保持未准备就绪状态
+                setScreenshotReady(false);
             }
         }
 
