@@ -1633,13 +1633,18 @@
             </div>
             <div style="display: flex; flex-direction: column; height: calc(80vh - 120px);">
                 <!-- 选项卡 -->
-                <div style="display: flex; margin-bottom: 1rem; border-bottom: 2px solid #e9ecef;">
-                    <button id="local-logs-tab" class="log-tab active" onclick="switchLogTab('local')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500;">
-                        本地日志
-                    </button>
-                    <button id="cloud-logs-tab" class="log-tab" onclick="switchLogTab('cloud')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500;">
-                        云端日志 🌐
-                    </button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 2px solid #e9ecef;">
+                    <div style="display: flex;">
+                        <button id="local-logs-tab" class="log-tab active" onclick="switchLogTab('local')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500;">
+                            本地日志
+                        </button>
+                        <button id="cloud-logs-tab" class="log-tab" onclick="switchLogTab('cloud')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500;">
+                            云端日志 🌐
+                        </button>
+                    </div>
+                    <div style="font-size: 0.8rem; color: #666; padding: 0.5rem;">
+                        🕒 云端日志自动保留48小时
+                    </div>
                 </div>
                 
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
@@ -1652,6 +1657,7 @@
                     <input type="text" id="log-username-filter" placeholder="按用户名筛选..." onchange="refreshLogs()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
                     <button class="btn btn-secondary" onclick="refreshLogs()">刷新</button>
                     <button class="btn btn-secondary" onclick="clearCurrentLogs()">清空日志</button>
+                    <button class="btn btn-secondary" onclick="manualCleanup()" style="background: #28a745; color: white;">清理过期</button>
                     <button class="btn btn-secondary" onclick="exportLogs()">导出日志</button>
                     <button class="btn btn-secondary" onclick="retryFailedLogs()" style="background: #17a2b8; color: white;">重试失败</button>
                 </div>
@@ -1868,7 +1874,7 @@
                 if (!shouldSendToCloud) return;
 
                 try {
-                    // 获取云端日志
+                                         // 获取云端日志并清理过期日志
                     let cloudLogs = [];
                     try {
                         const response = await fetch('/.netlify/functions/jsonbin-proxy', {
@@ -1877,7 +1883,10 @@
                         });
                         if (response.ok) {
                             const result = await response.json();
-                            cloudLogs = result.record?.centralLogs || [];
+                            const allLogs = result.record?.centralLogs || [];
+                            
+                            // 清理超过48小时的日志
+                            cloudLogs = this.cleanExpiredLogs(allLogs);
                         }
                     } catch (e) {
                         console.warn('获取云端日志失败，将创建新的日志记录');
@@ -1896,7 +1905,9 @@
 
                     // 限制云端日志数量（最多500条）
                     if (cloudLogs.length > 500) {
+                        const removedCount = cloudLogs.length - 500;
                         cloudLogs = cloudLogs.slice(0, 500);
+                        console.log(`[BeeStore] 云端日志数量超限，移除最旧的 ${removedCount} 条日志`);
                     }
 
                     // 构建完整的云端数据
@@ -1941,29 +1952,45 @@
             }
 
             shouldSendToCloud(log) {
-                // 定义需要发送到云端的日志类型
+                // 定义需要发送到云端的日志类型（只记录核心操作）
                 const criticalMessages = [
-                    '上传图片失败',
-                    '截图上传失败', 
+                    // 应用相关操作
                     '应用发布',
                     '应用编辑',
+                    '应用删除',
+                    
+                    // 图片/截图相关
+                    '上传图片失败',
+                    '截图上传失败', 
+                    '截图生成失败',
+                    '图片上传成功',
+                    '截图生成并上传成功',
+                    
+                    // 用户互动
+                    '点赞操作',
+                    '收藏操作', 
+                    '添加评论',
+                    '删除评论',
+                    
+                    // 系统关键错误
                     '数据同步失败',
-                    '用户注册',
-                    '用户登录失败',
-                    '数据恢复',
-                    '截图生成失败'
+                    '数据恢复'
                 ];
 
-                // 错误级别的日志都发送
-                if (log.level === 'ERROR') return true;
+                // 只发送ERROR级别中与上述操作相关的日志
+                if (log.level === 'ERROR') {
+                    return criticalMessages.some(msg => log.message.includes(msg));
+                }
 
                 // 重要操作的信息级日志
                 if (log.level === 'INFO' && criticalMessages.some(msg => log.message.includes(msg))) {
                     return true;
                 }
 
-                // 警告级日志
-                if (log.level === 'WARN') return true;
+                // 与核心操作相关的警告日志
+                if (log.level === 'WARN' && criticalMessages.some(msg => log.message.includes(msg))) {
+                    return true;
+                }
 
                 return false;
             }
@@ -2018,6 +2045,84 @@
                 }
             }
 
+            // 清理超过48小时的日志
+            cleanExpiredLogs(logs) {
+                if (!Array.isArray(logs)) return [];
+                
+                const fortyEightHoursAgo = new Date();
+                fortyEightHoursAgo.setHours(fortyEightHoursAgo.getHours() - 48);
+                
+                const validLogs = logs.filter(log => {
+                    try {
+                        const logTime = new Date(log.timestamp);
+                        return logTime > fortyEightHoursAgo;
+                    } catch (e) {
+                        // 如果时间戳解析失败，保留日志（安全起见）
+                        return true;
+                    }
+                });
+                
+                const removedCount = logs.length - validLogs.length;
+                if (removedCount > 0) {
+                    console.log(`[BeeStore] 清理了 ${removedCount} 条超过48小时的云端日志，剩余 ${validLogs.length} 条`);
+                    
+                    // 记录清理操作到本地日志（不发送到云端避免循环）
+                    const cleanupLog = this.getFormattedLog('INFO', `自动清理过期日志`, {
+                        removedCount: removedCount,
+                        remainingCount: validLogs.length,
+                        operation: '系统维护'
+                    });
+                    this.logs.unshift(cleanupLog);
+                    this.saveLogs();
+                }
+                
+                return validLogs;
+            }
+
+            // 定期清理云端日志（定时任务）
+            async cleanupCloudLogs() {
+                try {
+                    const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (!response.ok) return;
+                    
+                    const result = await response.json();
+                    const allLogs = result.record?.centralLogs || [];
+                    const cleanedLogs = this.cleanExpiredLogs(allLogs);
+                    
+                    // 如果清理了日志，更新云端数据
+                    if (cleanedLogs.length < allLogs.length) {
+                        const fullCloudData = {
+                            ...result.record,
+                            centralLogs: cleanedLogs
+                        };
+                        
+                        await fetch('/.netlify/functions/jsonbin-proxy', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(fullCloudData)
+                        });
+                        
+                        const removedCount = allLogs.length - cleanedLogs.length;
+                        console.log(`[BeeStore] 定期清理完成，移除 ${removedCount} 条过期日志，剩余 ${cleanedLogs.length} 条`);
+                        
+                        // 记录定期清理操作到本地日志
+                        const cleanupLog = this.getFormattedLog('INFO', `定期清理云端日志`, {
+                            removedCount: removedCount,
+                            remainingCount: cleanedLogs.length,
+                            operation: '系统维护'
+                        });
+                        this.logs.unshift(cleanupLog);
+                        this.saveLogs();
+                    }
+                } catch (error) {
+                    console.warn('定期清理云端日志失败:', error);
+                }
+            }
+
             getLogs(limit = 100, level = null, username = null) {
                 let filteredLogs = this.logs;
 
@@ -2051,7 +2156,10 @@
                     }
                     
                     const result = await response.json();
-                    let cloudLogs = result.record?.centralLogs || [];
+                    const allLogs = result.record?.centralLogs || [];
+                    
+                    // 清理过期日志
+                    let cloudLogs = this.cleanExpiredLogs(allLogs);
                     
                     // 应用筛选
                     if (level) {
@@ -3003,6 +3111,15 @@
                             error: snapshotError.message 
                         });
                     }
+
+                    // 记录删除操作
+                    logger.info('应用删除', {
+                        appId: appId,
+                        appName: appToDelete.name,
+                        appUrl: appToDelete.url,
+                        authorId: appToDelete.authorId,
+                        operation: '应用管理'
+                    });
                 }
 
                 cloudData.apps = cloudData.apps.filter(app => app.id !== appId);
@@ -3010,6 +3127,11 @@
                 loadApps();
                 alert('删除成功！');
             } catch (error) {
+                logger.error('应用删除失败', {
+                    appId: appId,
+                    error: error.message,
+                    operation: '应用管理失败'
+                });
                 alert('删除失败: ' + error.message);
             }
         }
@@ -3052,15 +3174,31 @@
                 if (!app.likes) app.likes = [];
 
                 const likedIndex = app.likes.indexOf(currentUser.id);
+                const isLiking = likedIndex === -1;
+                
                 if (likedIndex > -1) {
                     app.likes.splice(likedIndex, 1);
                 } else {
                     app.likes.push(currentUser.id);
                 }
 
+                // 记录点赞操作
+                logger.info('点赞操作', {
+                    appId: appId,
+                    appName: app.name,
+                    action: isLiking ? '点赞' : '取消点赞',
+                    authorId: app.authorId,
+                    operation: '用户互动'
+                });
+
                 await syncData();
                 loadApps(); // 重新加载以更新UI
             } catch (error) {
+                logger.error('点赞操作失败', {
+                    appId: appId,
+                    error: error.message,
+                    operation: '用户互动失败'
+                });
                 alert('操作失败: ' + error.message);
             }
         }
@@ -3079,15 +3217,31 @@
                 if (!app.favorites) app.favorites = [];
 
                 const favoritedIndex = app.favorites.indexOf(currentUser.id);
+                const isFavoriting = favoritedIndex === -1;
+                
                 if (favoritedIndex > -1) {
                     app.favorites.splice(favoritedIndex, 1);
                 } else {
                     app.favorites.push(currentUser.id);
                 }
 
+                // 记录收藏操作
+                logger.info('收藏操作', {
+                    appId: appId,
+                    appName: app.name,
+                    action: isFavoriting ? '收藏' : '取消收藏',
+                    authorId: app.authorId,
+                    operation: '用户互动'
+                });
+
                 await syncData();
                 loadApps(); // 重新加载以更新UI
             } catch (error) {
+                logger.error('收藏操作失败', {
+                    appId: appId,
+                    error: error.message,
+                    operation: '用户互动失败'
+                });
                 alert('操作失败: ' + error.message);
             }
         }
@@ -3134,9 +3288,24 @@
                 app.comments.push(newComment);
                 input.value = '';
 
+                // 记录评论操作
+                logger.info('添加评论', {
+                    appId: appId,
+                    appName: app.name,
+                    commentId: newComment.id,
+                    commentContent: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+                    authorId: app.authorId,
+                    operation: '用户互动'
+                });
+
                 await syncData();
                 loadApps(); // 重新加载以更新UI
             } catch (error) {
+                logger.error('添加评论失败', {
+                    appId: appId,
+                    error: error.message,
+                    operation: '用户互动失败'
+                });
                 alert('评论失败: ' + error.message);
             }
         }
@@ -3162,9 +3331,25 @@
 
                 app.comments = app.comments.filter(c => c.id !== commentId);
 
+                // 记录删除评论操作
+                logger.info('删除评论', {
+                    appId: appId,
+                    appName: app.name,
+                    commentId: commentId,
+                    deletedContent: comment.content.substring(0, 50) + (comment.content.length > 50 ? '...' : ''),
+                    authorId: app.authorId,
+                    operation: '用户互动'
+                });
+
                 await syncData();
                 loadApps(); // 重新加载以更新UI
             } catch (error) {
+                logger.error('删除评论失败', {
+                    appId: appId,
+                    commentId: commentId,
+                    error: error.message,
+                    operation: '用户互动失败'
+                });
                 alert('删除失败: ' + error.message);
             }
         }
@@ -3420,13 +3605,7 @@
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value.trim();
 
-            logger.info('用户尝试登录', { 
-                username: username,
-                operation: '用户登录尝试'
-            });
-
             if (!username || !password) {
-                logger.warn('登录失败：缺少用户名或密码', { username: username });
                 alert('请填写用户名和密码');
                 return;
             }
@@ -3434,21 +3613,12 @@
             const user = cloudData.users.find(u => u.username === username && u.password === password);
             
             if (user) {
-                logger.info('用户登录成功', { 
-                    userId: user.id,
-                    username: user.username,
-                    operation: '用户登录成功'
-                });
                 currentUser = user;
                 localStorage.setItem('currentUser', JSON.stringify(user));
                 showUserNav();
                 closeModal('login-modal');
                 alert('登录成功！');
             } else {
-                logger.warn('用户登录失败：用户名或密码错误', { 
-                    username: username,
-                    operation: '用户登录失败'
-                });
                 alert('用户名或密码错误');
             }
         }
@@ -3459,34 +3629,26 @@
             const email = document.getElementById('register-email').value.trim();
             const password = document.getElementById('register-password').value.trim();
 
-            logger.info('用户尝试注册', { 
-                username: username,
-                email: email,
-                operation: '用户注册尝试'
-            });
+
 
             if (!username || !email || !password) {
-                logger.warn('注册失败：缺少必填字段', { username: username, email: email });
                 alert('请填写所有字段');
                 return;
             }
 
             if (password.length < 6) {
-                logger.warn('注册失败：密码过短', { username: username, passwordLength: password.length });
                 alert('密码至少需要6个字符');
                 return;
             }
 
             // 检查用户名是否已存在
             if (cloudData.users.some(u => u.username === username)) {
-                logger.warn('注册失败：用户名已存在', { username: username });
                 alert('用户名已存在');
                 return;
             }
 
             // 检查邮箱是否已存在
             if (cloudData.users.some(u => u.email === email)) {
-                logger.warn('注册失败：邮箱已存在', { username: username, email: email });
                 alert('邮箱已存在');
                 return;
             }
@@ -3518,13 +3680,6 @@
 
                 // 添加用户到本地数据
                 cloudData.users.push(newUser);
-                
-                logger.info('用户注册成功', { 
-                    userId: newUser.id,
-                    username: newUser.username,
-                    email: newUser.email,
-                    operation: '用户注册成功'
-                });
                 
                 // 立即设置当前用户和本地存储（确保即使同步失败也能保持登录状态）
                 currentUser = newUser;
@@ -4081,16 +4236,9 @@
 
         // 退出登录
         function logout() {
-            logger.info('用户退出登录', { 
-                userId: currentUser?.id,
-                username: currentUser?.username,
-                operation: '用户退出登录'
-            });
-            
             localStorage.removeItem('currentUser');
             currentUser = null;
             showGuestNav();
-            document.querySelector('.page-title').textContent = '发现精彩作品';
             loadApps();
         }
 
@@ -4418,6 +4566,22 @@
             }
         }
 
+        async function manualCleanup() {
+            if (currentLogTab === 'cloud') {
+                if (confirm('确定要手动清理过期的云端日志吗？将移除超过48小时的日志记录。')) {
+                    try {
+                        await logger.cleanupCloudLogs();
+                        alert('清理完成！请刷新查看结果。');
+                        await refreshLogs();
+                    } catch (error) {
+                        alert('清理失败: ' + error.message);
+                    }
+                }
+            } else {
+                alert('清理过期日志功能仅适用于云端日志');
+            }
+        }
+
         async function exportLogs() {
             try {
                 let logs = [];
@@ -4731,6 +4895,16 @@
         setInterval(() => {
             logger.retryFailedLogs().catch(e => console.warn('定期重试失败:', e));
         }, 5 * 60 * 1000);
+
+        // 启动定期清理机制（每12小时清理一次过期日志）
+        setInterval(() => {
+            logger.cleanupCloudLogs().catch(e => console.warn('定期清理失败:', e));
+        }, 12 * 60 * 60 * 1000);
+
+        // 应用启动时执行一次清理
+        setTimeout(() => {
+            logger.cleanupCloudLogs().catch(e => console.warn('启动清理失败:', e));
+        }, 10000); // 10秒后执行，确保应用初始化完成
     </script>
 </body>
 </html>
