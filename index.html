@@ -854,6 +854,23 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* 日志选项卡样式 */
+        .log-tab {
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .log-tab:hover {
+            color: #ff9500;
+            background: rgba(255, 149, 0, 0.1);
+        }
+
+        .log-tab.active {
+            color: #ff9500;
+            border-bottom-color: #ff9500 !important;
+            background: rgba(255, 149, 0, 0.05);
+        }
+
         /* 搜索功能 */
         .search-section {
             background: #f8f9fa;
@@ -1248,6 +1265,7 @@
                         <button class="btn btn-secondary" onclick="showMyApps()">我的应用</button>
                         <button class="btn btn-secondary" onclick="showMyFavorites()">我的收藏</button>
                         <button class="btn btn-secondary" onclick="showLogViewer()" style="display: none;" id="log-viewer-btn">📋 查看日志</button>
+                        <button class="btn btn-secondary" onclick="showSnapshotViewer()" style="display: none;" id="snapshot-viewer-btn">📸 数据快照</button>
                         <button class="btn btn-secondary" onclick="logout()">退出</button>
                     </div>
                 </div>
@@ -1447,6 +1465,9 @@
                 <button class="mobile-nav-item" onclick="showLogViewer(); closeMobileMenu();" style="display: none;" id="mobile-log-viewer-btn">
                     📋 查看日志
                 </button>
+                <button class="mobile-nav-item" onclick="showSnapshotViewer(); closeMobileMenu();" style="display: none;" id="mobile-snapshot-viewer-btn">
+                    📸 数据快照
+                </button>
                 <button class="mobile-nav-item" onclick="logout(); closeMobileMenu();">
                     🚪 退出登录
                 </button>
@@ -1594,6 +1615,16 @@
                 <button class="close-btn" onclick="closeModal('log-viewer-modal')">&times;</button>
             </div>
             <div style="display: flex; flex-direction: column; height: calc(80vh - 120px);">
+                <!-- 选项卡 -->
+                <div style="display: flex; margin-bottom: 1rem; border-bottom: 2px solid #e9ecef;">
+                    <button id="local-logs-tab" class="log-tab active" onclick="switchLogTab('local')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500;">
+                        本地日志
+                    </button>
+                    <button id="cloud-logs-tab" class="log-tab" onclick="switchLogTab('cloud')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500;">
+                        云端日志 🌐
+                    </button>
+                </div>
+                
                 <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
                     <select id="log-level-filter" onchange="refreshLogs()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
                         <option value="">全部级别</option>
@@ -1603,11 +1634,72 @@
                     </select>
                     <input type="text" id="log-username-filter" placeholder="按用户名筛选..." onchange="refreshLogs()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
                     <button class="btn btn-secondary" onclick="refreshLogs()">刷新</button>
-                    <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
+                    <button class="btn btn-secondary" onclick="clearCurrentLogs()">清空日志</button>
                     <button class="btn btn-secondary" onclick="exportLogs()">导出日志</button>
+                    <button class="btn btn-secondary" onclick="retryFailedLogs()" style="background: #17a2b8; color: white;">重试失败</button>
                 </div>
                 <div id="log-content" style="flex: 1; overflow-y: auto; border: 1px solid #ddd; padding: 1rem; font-family: 'Courier New', monospace; font-size: 0.9rem; background: #f8f9fa;">
                     <!-- 日志内容将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快照查看模态框 -->
+    <div class="modal" id="snapshot-viewer-modal">
+        <div class="modal-content" style="max-width: 900px; height: 85vh;">
+            <div class="modal-header">
+                <h2 class="modal-title">数据快照管理</h2>
+                <button class="close-btn" onclick="closeModal('snapshot-viewer-modal')">&times;</button>
+            </div>
+            <div style="display: flex; flex-direction: column; height: calc(85vh - 120px);">
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;">
+                    <select id="snapshot-type-filter" onchange="refreshSnapshots()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+                        <option value="">全部类型</option>
+                        <option value="app_edit_before">应用编辑前</option>
+                        <option value="app_delete_before">应用删除前</option>
+                        <option value="apps_before_add">新应用发布前</option>
+                        <option value="users_before_add">用户注册前</option>
+                        <option value="full_before_sync">数据同步前</option>
+                        <option value="local_before_merge">数据合并前(本地)</option>
+                        <option value="remote_before_merge">数据合并前(远程)</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="refreshSnapshots()">刷新快照</button>
+                    <button class="btn btn-secondary" onclick="clearSnapshots()">清空快照</button>
+                    <button class="btn btn-secondary" onclick="exportSnapshots()">导出快照</button>
+                </div>
+                <div id="snapshot-content" style="flex: 1; overflow-y: auto; border: 1px solid #ddd; padding: 1rem; background: #f8f9fa;">
+                    <!-- 快照内容将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 快照恢复确认模态框 -->
+    <div class="modal" id="snapshot-restore-modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">确认数据恢复</h2>
+                <button class="close-btn" onclick="closeModal('snapshot-restore-modal')">&times;</button>
+            </div>
+            <div>
+                <div id="restore-info" style="margin-bottom: 1.5rem; padding: 1rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px;">
+                    <!-- 恢复信息将在这里显示 -->
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="restore-type" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">恢复范围：</label>
+                    <select id="restore-type" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+                        <option value="full">完整恢复（应用+用户）</option>
+                        <option value="apps">仅恢复应用数据</option>
+                        <option value="users">仅恢复用户数据</option>
+                    </select>
+                </div>
+                <div style="color: #dc3545; font-size: 0.9rem; margin-bottom: 1rem;">
+                    ⚠️ 警告：此操作将覆盖当前数据，无法撤销！建议先创建当前数据的快照。
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal('snapshot-restore-modal')">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmRestore()" style="background: #dc3545;">确认恢复</button>
                 </div>
             </div>
         </div>
@@ -1711,6 +1803,10 @@
                 this.logs.unshift(log);
                 console.log(`[BeeStore] ${message}`, data);
                 this.saveLogs();
+                
+                // 异步发送到云端（不阻塞主流程）
+                this.sendToCloud(log).catch(e => console.warn('发送日志到云端失败:', e));
+                
                 return log;
             }
 
@@ -1719,6 +1815,10 @@
                 this.logs.unshift(log);
                 console.warn(`[BeeStore] ${message}`, data);
                 this.saveLogs();
+                
+                // 异步发送到云端（不阻塞主流程）
+                this.sendToCloud(log).catch(e => console.warn('发送日志到云端失败:', e));
+                
                 return log;
             }
 
@@ -1727,6 +1827,10 @@
                 this.logs.unshift(log);
                 console.error(`[BeeStore] ${message}`, data);
                 this.saveLogs();
+                
+                // 异步发送到云端（不阻塞主流程）
+                this.sendToCloud(log).catch(e => console.warn('发送日志到云端失败:', e));
+                
                 return log;
             }
 
@@ -1736,6 +1840,164 @@
                     this.logs = this.logs.slice(0, this.maxLogs);
                 }
                 localStorage.setItem('beestoreLogs', JSON.stringify(this.logs));
+            }
+
+            // 发送关键日志到云端（供admin查看）
+            async sendToCloud(log) {
+                // 只发送关键的错误和重要操作到云端
+                const shouldSendToCloud = this.shouldSendToCloud(log);
+                
+                if (!shouldSendToCloud) return;
+
+                try {
+                    // 获取云端日志
+                    let cloudLogs = [];
+                    try {
+                        const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        if (response.ok) {
+                            const result = await response.json();
+                            cloudLogs = result.record?.centralLogs || [];
+                        }
+                    } catch (e) {
+                        console.warn('获取云端日志失败，将创建新的日志记录');
+                    }
+
+                    // 添加新日志到云端
+                    cloudLogs.unshift({
+                        ...log,
+                        cloudId: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        deviceInfo: {
+                            userAgent: navigator.userAgent,
+                            timestamp: new Date().toISOString(),
+                            url: window.location.href
+                        }
+                    });
+
+                    // 限制云端日志数量（最多500条）
+                    if (cloudLogs.length > 500) {
+                        cloudLogs = cloudLogs.slice(0, 500);
+                    }
+
+                    // 构建完整的云端数据
+                    let fullCloudData = {
+                        users: [],
+                        apps: [],
+                        lastSync: null,
+                        centralLogs: cloudLogs
+                    };
+
+                    // 尝试保持现有的数据结构
+                    try {
+                        const existingResponse = await fetch('/.netlify/functions/jsonbin-proxy', {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        if (existingResponse.ok) {
+                            const existingData = await existingResponse.json();
+                            if (existingData.record) {
+                                fullCloudData = {
+                                    ...existingData.record,
+                                    centralLogs: cloudLogs
+                                };
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('获取现有云端数据失败，使用默认结构');
+                    }
+
+                    // 发送到云端
+                    await fetch('/.netlify/functions/jsonbin-proxy', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fullCloudData)
+                    });
+
+                } catch (error) {
+                    console.error('发送日志到云端失败:', error);
+                    // 失败时保存到本地待发送队列
+                    this.saveToRetryQueue(log);
+                }
+            }
+
+            shouldSendToCloud(log) {
+                // 定义需要发送到云端的日志类型
+                const criticalMessages = [
+                    '上传图片失败',
+                    '截图上传失败', 
+                    '应用发布',
+                    '应用编辑',
+                    '数据同步失败',
+                    '用户注册',
+                    '用户登录失败',
+                    '数据恢复',
+                    '截图生成失败'
+                ];
+
+                // 错误级别的日志都发送
+                if (log.level === 'ERROR') return true;
+
+                // 重要操作的信息级日志
+                if (log.level === 'INFO' && criticalMessages.some(msg => log.message.includes(msg))) {
+                    return true;
+                }
+
+                // 警告级日志
+                if (log.level === 'WARN') return true;
+
+                return false;
+            }
+
+            saveToRetryQueue(log) {
+                try {
+                    const retryQueue = JSON.parse(localStorage.getItem('beestoreLogRetryQueue') || '[]');
+                    retryQueue.push({
+                        ...log,
+                        retryAttempts: 0,
+                        queuedAt: new Date().toISOString()
+                    });
+                    
+                    // 限制重试队列大小
+                    if (retryQueue.length > 100) {
+                        retryQueue.splice(100);
+                    }
+                    
+                    localStorage.setItem('beestoreLogRetryQueue', JSON.stringify(retryQueue));
+                } catch (e) {
+                    console.error('保存重试队列失败:', e);
+                }
+            }
+
+            async retryFailedLogs() {
+                try {
+                    const retryQueue = JSON.parse(localStorage.getItem('beestoreLogRetryQueue') || '[]');
+                    if (retryQueue.length === 0) return;
+
+                    const successfullyRetried = [];
+                    
+                    for (const queuedLog of retryQueue) {
+                        if (queuedLog.retryAttempts < 3) {
+                            try {
+                                await this.sendToCloud(queuedLog);
+                                successfullyRetried.push(queuedLog);
+                            } catch (e) {
+                                queuedLog.retryAttempts++;
+                            }
+                        } else {
+                            // 超过重试次数，移除
+                            successfullyRetried.push(queuedLog);
+                        }
+                    }
+
+                    // 更新重试队列
+                    const remainingQueue = retryQueue.filter(log => !successfullyRetried.includes(log));
+                    localStorage.setItem('beestoreLogRetryQueue', JSON.stringify(remainingQueue));
+
+                } catch (e) {
+                    console.error('重试失败的日志时出错:', e);
+                }
             }
 
             getLogs(limit = 100, level = null, username = null) {
@@ -1756,6 +2018,237 @@
                 this.logs = [];
                 localStorage.removeItem('beestoreLogs');
                 console.log('[BeeStore] 日志已清空');
+            }
+
+            // 获取云端日志（仅admin可用）
+            async getCloudLogs(limit = 100, level = null, username = null) {
+                try {
+                    const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error('获取云端日志失败');
+                    }
+                    
+                    const result = await response.json();
+                    let cloudLogs = result.record?.centralLogs || [];
+                    
+                    // 应用筛选
+                    if (level) {
+                        cloudLogs = cloudLogs.filter(log => log.level === level);
+                    }
+                    
+                    if (username) {
+                        cloudLogs = cloudLogs.filter(log => 
+                            log.user && log.user.username && log.user.username.toLowerCase().includes(username.toLowerCase())
+                        );
+                    }
+                    
+                    return cloudLogs.slice(0, limit);
+                } catch (error) {
+                    console.error('获取云端日志失败:', error);
+                    throw error;
+                }
+            }
+
+            // 清空云端日志（仅admin可用）
+            async clearCloudLogs() {
+                try {
+                    // 获取现有数据结构
+                    const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    let fullCloudData = {
+                        users: [],
+                        apps: [],
+                        lastSync: null,
+                        centralLogs: []
+                    };
+                    
+                    if (response.ok) {
+                        const existingData = await response.json();
+                        if (existingData.record) {
+                            fullCloudData = {
+                                ...existingData.record,
+                                centralLogs: []
+                            };
+                        }
+                    }
+                    
+                    // 保存清空后的数据
+                    await fetch('/.netlify/functions/jsonbin-proxy', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(fullCloudData)
+                    });
+                    
+                    console.log('[BeeStore] 云端日志已清空');
+                } catch (error) {
+                    console.error('清空云端日志失败:', error);
+                    throw error;
+                }
+            }
+
+            // 数据快照功能
+            snapshot(description, data, metadata = {}) {
+                try {
+                    // 创建深拷贝并压缩数据
+                    const snapshotData = JSON.parse(JSON.stringify(data));
+                    const compressedData = this.compressData(snapshotData);
+                    
+                    const snapshot = {
+                        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        timestamp: new Date().toISOString(),
+                        description,
+                        data: compressedData,
+                        metadata: {
+                            ...metadata,
+                            dataSize: JSON.stringify(data).length,
+                            compressedSize: JSON.stringify(compressedData).length,
+                            user: currentUser ? {
+                                id: currentUser.id,
+                                username: currentUser.username
+                            } : { id: null, username: 'guest' }
+                        },
+                        type: 'SNAPSHOT'
+                    };
+
+                    // 获取现有快照
+                    const snapshots = JSON.parse(localStorage.getItem('beestoreSnapshots') || '[]');
+                    snapshots.unshift(snapshot);
+
+                    // 限制快照数量 (最多保存50个快照)
+                    if (snapshots.length > 50) {
+                        snapshots.splice(50);
+                    }
+
+                    localStorage.setItem('beestoreSnapshots', JSON.stringify(snapshots));
+                    
+                    this.info(`数据快照已创建: ${description}`, {
+                        snapshotId: snapshot.id,
+                        dataSize: snapshot.metadata.dataSize,
+                        compressedSize: snapshot.metadata.compressedSize,
+                        operation: '数据快照'
+                    });
+
+                    return snapshot;
+                } catch (error) {
+                    this.error('创建数据快照失败', { error: error.message, description });
+                    throw error;
+                }
+            }
+
+            compressData(data) {
+                // 简单的数据压缩：移除不必要的字段，保留核心数据
+                if (Array.isArray(data)) {
+                    return data.map(item => this.compressData(item));
+                }
+                
+                if (typeof data === 'object' && data !== null) {
+                    const compressed = {};
+                    for (const [key, value] of Object.entries(data)) {
+                        // 跳过一些临时或不重要的字段
+                        if (!['lastSync', 'id'].includes(key) || key === 'id') {
+                            compressed[key] = this.compressData(value);
+                        }
+                    }
+                    return compressed;
+                }
+                
+                return data;
+            }
+
+            decompressData(compressedData) {
+                // 解压缩数据（当前实现中压缩程度有限，主要是数据结构保持）
+                return JSON.parse(JSON.stringify(compressedData));
+            }
+
+            getSnapshots(limit = 50, type = null) {
+                try {
+                    const snapshots = JSON.parse(localStorage.getItem('beestoreSnapshots') || '[]');
+                    
+                    let filteredSnapshots = snapshots;
+                    if (type) {
+                        filteredSnapshots = snapshots.filter(snapshot => 
+                            snapshot.metadata.snapshotType === type
+                        );
+                    }
+
+                    return filteredSnapshots.slice(0, limit);
+                } catch (error) {
+                    this.error('获取快照列表失败', { error: error.message });
+                    return [];
+                }
+            }
+
+            restoreFromSnapshot(snapshotId, targetType = 'full') {
+                try {
+                    const snapshots = JSON.parse(localStorage.getItem('beestoreSnapshots') || '[]');
+                    const snapshot = snapshots.find(s => s.id === snapshotId);
+                    
+                    if (!snapshot) {
+                        throw new Error('快照不存在');
+                    }
+
+                    // 解压缩数据
+                    const restoredData = this.decompressData(snapshot.data);
+                    
+                    this.info(`开始从快照恢复数据: ${snapshot.description}`, {
+                        snapshotId: snapshotId,
+                        targetType: targetType,
+                        operation: '数据恢复'
+                    });
+
+                    // 根据目标类型恢复数据
+                    switch (targetType) {
+                        case 'apps':
+                            if (restoredData.apps) {
+                                cloudData.apps = restoredData.apps;
+                            } else if (Array.isArray(restoredData)) {
+                                cloudData.apps = restoredData;
+                            }
+                            break;
+                        case 'users':
+                            if (restoredData.users) {
+                                cloudData.users = restoredData.users;
+                            } else if (Array.isArray(restoredData)) {
+                                cloudData.users = restoredData;
+                            }
+                            break;
+                        case 'full':
+                        default:
+                            if (restoredData.apps) cloudData.apps = restoredData.apps;
+                            if (restoredData.users) cloudData.users = restoredData.users;
+                            if (restoredData.lastSync) cloudData.lastSync = restoredData.lastSync;
+                            break;
+                    }
+
+                    this.info(`数据恢复完成: ${snapshot.description}`, {
+                        snapshotId: snapshotId,
+                        targetType: targetType,
+                        restoredApps: cloudData.apps?.length || 0,
+                        restoredUsers: cloudData.users?.length || 0,
+                        operation: '数据恢复完成'
+                    });
+
+                    return restoredData;
+                } catch (error) {
+                    this.error('数据恢复失败', { 
+                        snapshotId, 
+                        targetType, 
+                        error: error.message 
+                    });
+                    throw error;
+                }
+            }
+
+            clearSnapshots() {
+                localStorage.removeItem('beestoreSnapshots');
+                this.info('所有数据快照已清空', { operation: '清空快照' });
             }
         }
 
@@ -1781,6 +2274,27 @@
             if (!remoteData || !remoteData.users || !remoteData.apps) {
                 logger.info('无远程数据，保持本地数据', { operation: '数据合并' });
                 return cloudData;
+            }
+
+            // 在数据合并前创建快照
+            try {
+                logger.snapshot('数据合并前本地数据快照', cloudData, {
+                    snapshotType: 'local_before_merge',
+                    operation: '数据合并前本地',
+                    localUsers: cloudData.users.length,
+                    localApps: cloudData.apps.length
+                });
+                
+                logger.snapshot('数据合并前远程数据快照', remoteData, {
+                    snapshotType: 'remote_before_merge',
+                    operation: '数据合并前远程',
+                    remoteUsers: remoteData.users.length,
+                    remoteApps: remoteData.apps.length
+                });
+            } catch (snapshotError) {
+                logger.warn('创建合并前快照失败，继续执行合并', { 
+                    error: snapshotError.message 
+                });
             }
 
             const merged = {
@@ -2048,6 +2562,22 @@
                     console.warn(`数据大小过大: ${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB`);
                     updateStatus('⚠️ 数据过大，建议清理', 'error');
                     throw new Error(`数据大小 ${Math.round(dataSize / 1024 / 1024 * 100) / 100}MB 超过限制 ${Math.round(maxSize / 1024 / 1024)}MB`);
+                }
+                
+                // 在同步前创建快照
+                try {
+                    logger.snapshot('数据同步前快照', cloudData, {
+                        snapshotType: 'full_before_sync',
+                        operation: '数据同步前',
+                        usersCount: cloudData.users.length,
+                        appsCount: cloudData.apps.length,
+                        retryCount: retryCount
+                    });
+                } catch (snapshotError) {
+                    logger.warn('创建同步前快照失败，继续执行同步', { 
+                        retryCount: retryCount,
+                        error: snapshotError.message 
+                    });
                 }
                 
                 await cloudStorage.saveData(cloudData);
@@ -2440,6 +2970,23 @@
             if (!confirm('确定要删除这个应用吗？')) return;
 
             try {
+                // 在删除前创建快照
+                const appToDelete = cloudData.apps.find(app => app.id === appId);
+                if (appToDelete) {
+                    try {
+                        logger.snapshot(`删除应用前快照: ${appToDelete.name}`, appToDelete, {
+                            snapshotType: 'app_delete_before',
+                            appId: appId,
+                            operation: '应用删除前'
+                        });
+                    } catch (snapshotError) {
+                        logger.warn('创建删除前快照失败，继续执行删除', { 
+                            appId: appId, 
+                            error: snapshotError.message 
+                        });
+                    }
+                }
+
                 cloudData.apps = cloudData.apps.filter(app => app.id !== appId);
                 await syncData();
                 loadApps();
@@ -2853,6 +3400,21 @@
                     createdAt: new Date().toISOString()
                 };
 
+                // 在添加用户前创建快照
+                try {
+                    logger.snapshot('用户注册前快照', cloudData.users, {
+                        snapshotType: 'users_before_add',
+                        operation: '用户注册前',
+                        usersCount: cloudData.users.length,
+                        newUsername: username
+                    });
+                } catch (snapshotError) {
+                    logger.warn('创建用户注册前快照失败，继续执行注册', { 
+                        username: username, 
+                        error: snapshotError.message 
+                    });
+                }
+
                 // 添加用户到本地数据
                 cloudData.users.push(newUser);
                 
@@ -2957,6 +3519,30 @@
                 source: screenshotSource,
                 screenshotUrl: screenshot ? screenshot.substring(0, 100) + '...' : null 
             });
+            
+            // 在数据修改前创建快照
+            try {
+                if (currentEditingAppId) {
+                    // 编辑模式：保存修改前的应用数据
+                    const originalApp = cloudData.apps.find(a => a.id === currentEditingAppId);
+                    if (originalApp) {
+                        logger.snapshot(`编辑应用前快照: ${originalApp.name}`, originalApp, {
+                            snapshotType: 'app_edit_before',
+                            appId: currentEditingAppId,
+                            operation: '应用编辑前'
+                        });
+                    }
+                } else {
+                    // 发布新应用模式：保存添加前的apps数组状态
+                    logger.snapshot('发布新应用前快照', cloudData.apps, {
+                        snapshotType: 'apps_before_add',
+                        operation: '新应用发布前',
+                        appsCount: cloudData.apps.length
+                    });
+                }
+            } catch (snapshotError) {
+                logger.warn('创建数据快照失败，继续执行操作', { error: snapshotError.message });
+            }
             
             try {
                 if (currentEditingAppId) {
@@ -3562,26 +4148,62 @@
         }
 
         // 日志查看功能
+        let currentLogTab = 'local'; // 当前选中的日志选项卡
+
         function showLogViewer() {
-            // 只有管理员或开发者可以查看日志（这里简化为用户ID为1的用户）
-            if (!currentUser || currentUser.id !== 1) {
-                alert('您没有权限查看系统日志');
+            // 只有admin账号可以查看日志
+            if (!currentUser || currentUser.username !== 'admin') {
+                alert('您没有权限查看系统日志，仅限admin账号访问');
                 return;
             }
             
             showModal('log-viewer-modal');
+            // 启动重试机制
+            logger.retryFailedLogs().catch(e => console.warn('重试失败日志时出错:', e));
             refreshLogs();
         }
 
-        function refreshLogs() {
+        function switchLogTab(tab) {
+            currentLogTab = tab;
+            
+            // 更新选项卡样式
+            document.getElementById('local-logs-tab').classList.toggle('active', tab === 'local');
+            document.getElementById('cloud-logs-tab').classList.toggle('active', tab === 'cloud');
+            
+            // 刷新日志内容
+            refreshLogs();
+        }
+
+        async function refreshLogs() {
             const levelFilter = document.getElementById('log-level-filter').value;
             const usernameFilter = document.getElementById('log-username-filter').value.trim();
             const logContent = document.getElementById('log-content');
             
-            const logs = logger.getLogs(200, levelFilter || null, usernameFilter || null);
+            // 显示加载状态
+            logContent.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;"><div class="loading" style="margin: 0 auto;"></div><br/>正在加载日志...</div>';
+            
+            let logs = [];
+            
+            try {
+                if (currentLogTab === 'cloud') {
+                    // 获取云端日志
+                    logs = await logger.getCloudLogs(200, levelFilter || null, usernameFilter || null);
+                } else {
+                    // 获取本地日志
+                    logs = logger.getLogs(200, levelFilter || null, usernameFilter || null);
+                }
+            } catch (error) {
+                logContent.innerHTML = `<div style="text-align: center; color: #dc3545; padding: 2rem;">
+                    <div style="font-size: 2rem;">❌</div>
+                    <div>加载日志失败: ${error.message}</div>
+                    <button onclick="refreshLogs()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">重试</button>
+                </div>`;
+                return;
+            }
             
             if (logs.length === 0) {
-                logContent.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">暂无日志记录</div>';
+                const tabName = currentLogTab === 'cloud' ? '云端' : '本地';
+                logContent.innerHTML = `<div style="text-align: center; color: #666; padding: 2rem;">暂无${tabName}日志记录</div>`;
                 return;
             }
             
@@ -3595,17 +4217,37 @@
                 const timeStr = new Date(log.timestamp).toLocaleString('zh-CN');
                 const dataStr = log.data ? JSON.stringify(log.data, null, 2) : '';
                 
+                // 检查是否包含快照ID
+                const hasSnapshot = log.data && log.data.snapshotId && log.message.includes('数据快照已创建');
+                const snapshotButton = hasSnapshot ? 
+                    `<button onclick="openSnapshotFromLog('${log.data.snapshotId}')" style="margin-left: 0.5rem; padding: 0.25rem 0.5rem; background: #17a2b8; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 0.8rem;">📸 查看快照</button>` : '';
+                
+                // 云端日志额外信息
+                const isCloudLog = currentLogTab === 'cloud' && log.deviceInfo;
+                const cloudBadge = isCloudLog ? '<span style="margin-left: 0.5rem; background: #17a2b8; color: white; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.7rem;">🌐 云端</span>' : '';
+                const deviceInfo = isCloudLog ? 
+                    `<div style="margin-bottom: 0.25rem; font-size: 0.85rem; color: #666;">
+                        <strong>设备信息:</strong> ${log.deviceInfo.userAgent.split(' ')[0]}... | 
+                        <strong>页面:</strong> ${new URL(log.deviceInfo.url).pathname}
+                    </div>` : '';
+                
                 return `
                     <div style="margin-bottom: 1rem; padding: 0.5rem; border-left: 4px solid ${levelColor}; background: white;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-                            <span style="font-weight: bold; color: ${levelColor};">[${log.level}]</span>
+                            <div style="display: flex; align-items: center;">
+                                <span style="font-weight: bold; color: ${levelColor};">[${log.level}]</span>
+                                ${cloudBadge}
+                                ${hasSnapshot ? '<span style="margin-left: 0.5rem; background: #17a2b8; color: white; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.7rem;">📸 快照</span>' : ''}
+                            </div>
                             <span style="color: #666; font-size: 0.8rem;">${timeStr}</span>
                         </div>
                         <div style="margin-bottom: 0.25rem;">
                             <strong>用户:</strong> ${log.user.username} (ID: ${log.user.id})
                         </div>
-                        <div style="margin-bottom: 0.25rem;">
+                        ${deviceInfo}
+                        <div style="margin-bottom: 0.25rem; display: flex; align-items: center;">
                             <strong>消息:</strong> ${log.message}
+                            ${snapshotButton}
                         </div>
                         ${dataStr ? `<details style="margin-top: 0.5rem;"><summary style="cursor: pointer; color: #007bff;">查看详细数据</summary><pre style="margin: 0.5rem 0; padding: 0.5rem; background: #f8f9fa; border-radius: 4px; overflow-x: auto;">${dataStr}</pre></details>` : ''}
                     </div>
@@ -3615,41 +4257,326 @@
             logContent.innerHTML = logHtml;
         }
 
-        function clearLogs() {
-            if (confirm('确定要清空所有日志吗？此操作不可恢复。')) {
-                logger.clearLogs();
-                refreshLogs();
-                alert('日志已清空');
+        async function clearCurrentLogs() {
+            const tabName = currentLogTab === 'cloud' ? '云端' : '本地';
+            if (confirm(`确定要清空所有${tabName}日志吗？此操作不可恢复。`)) {
+                try {
+                    if (currentLogTab === 'cloud') {
+                        await logger.clearCloudLogs();
+                    } else {
+                        logger.clearLogs();
+                    }
+                    await refreshLogs();
+                    alert(`${tabName}日志已清空`);
+                } catch (error) {
+                    alert(`清空${tabName}日志失败: ` + error.message);
+                }
             }
         }
 
-        function exportLogs() {
-            const logs = logger.getLogs(1000);
-            const logText = logs.map(log => {
-                const timeStr = new Date(log.timestamp).toISOString();
-                const dataStr = log.data ? JSON.stringify(log.data) : '';
-                return `[${timeStr}] [${log.level}] ${log.user.username}: ${log.message} ${dataStr}`;
-            }).join('\n');
+        async function retryFailedLogs() {
+            try {
+                await logger.retryFailedLogs();
+                alert('重试完成！请刷新云端日志查看结果。');
+                if (currentLogTab === 'cloud') {
+                    await refreshLogs();
+                }
+            } catch (error) {
+                alert('重试失败: ' + error.message);
+            }
+        }
+
+        async function exportLogs() {
+            try {
+                let logs = [];
+                const tabName = currentLogTab === 'cloud' ? '云端' : '本地';
+                
+                if (currentLogTab === 'cloud') {
+                    logs = await logger.getCloudLogs(1000);
+                } else {
+                    logs = logger.getLogs(1000);
+                }
+                
+                const logText = logs.map(log => {
+                    const timeStr = new Date(log.timestamp).toISOString();
+                    const dataStr = log.data ? JSON.stringify(log.data) : '';
+                    const deviceStr = log.deviceInfo ? `[${log.deviceInfo.userAgent}]` : '';
+                    return `[${timeStr}] [${log.level}] ${log.user.username}: ${log.message} ${deviceStr} ${dataStr}`;
+                }).join('\n');
+                
+                const blob = new Blob([logText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bee-store-${currentLogTab}-logs-${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+            } catch (error) {
+                alert('导出日志失败: ' + error.message);
+            }
+        }
+
+        // 显示日志查看按钮（仅admin账号）
+        function updateLogViewerVisibility() {
+            const showLogBtn = currentUser && currentUser.username === 'admin';
+            const logBtn = document.getElementById('log-viewer-btn');
+            const mobileLogBtn = document.getElementById('mobile-log-viewer-btn');
+            const snapshotBtn = document.getElementById('snapshot-viewer-btn');
+            const mobileSnapshotBtn = document.getElementById('mobile-snapshot-viewer-btn');
             
-            const blob = new Blob([logText], { type: 'text/plain' });
+            if (logBtn) logBtn.style.display = showLogBtn ? 'inline-block' : 'none';
+            if (mobileLogBtn) mobileLogBtn.style.display = showLogBtn ? 'block' : 'none';
+            if (snapshotBtn) snapshotBtn.style.display = showLogBtn ? 'inline-block' : 'none';
+            if (mobileSnapshotBtn) mobileSnapshotBtn.style.display = showLogBtn ? 'block' : 'none';
+        }
+
+        // 快照查看和恢复功能
+        let currentRestoreSnapshotId = null;
+
+        function showSnapshotViewer() {
+            // 只有admin账号可以查看快照
+            if (!currentUser || currentUser.username !== 'admin') {
+                alert('您没有权限查看数据快照，仅限admin账号访问');
+                return;
+            }
+            
+            showModal('snapshot-viewer-modal');
+            refreshSnapshots();
+        }
+
+        function refreshSnapshots() {
+            const typeFilter = document.getElementById('snapshot-type-filter').value;
+            const snapshotContent = document.getElementById('snapshot-content');
+            
+            const snapshots = logger.getSnapshots(100, typeFilter || null);
+            
+            if (snapshots.length === 0) {
+                snapshotContent.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">暂无数据快照</div>';
+                return;
+            }
+            
+            const snapshotHtml = snapshots.map(snapshot => {
+                const timeStr = new Date(snapshot.timestamp).toLocaleString('zh-CN');
+                const typeColor = {
+                    'app_edit_before': '#007bff',
+                    'app_delete_before': '#dc3545',
+                    'apps_before_add': '#28a745',
+                    'users_before_add': '#17a2b8',
+                    'full_before_sync': '#6f42c1',
+                    'local_before_merge': '#fd7e14',
+                    'remote_before_merge': '#20c997'
+                }[snapshot.metadata.snapshotType] || '#6c757d';
+                
+                const dataPreview = JSON.stringify(snapshot.data, null, 2).substring(0, 200) + '...';
+                
+                return `
+                    <div style="margin-bottom: 1rem; padding: 1rem; border-left: 4px solid ${typeColor}; background: white; border-radius: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div>
+                                <h4 style="margin: 0; color: ${typeColor};">${snapshot.description}</h4>
+                                <small style="color: #666;">${timeStr} | 用户: ${snapshot.metadata.user.username}</small>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-secondary" onclick="viewSnapshotDetails('${snapshot.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">详情</button>
+                                <button class="btn btn-primary" onclick="prepareRestore('${snapshot.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; background: #28a745;">恢复</button>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                            <strong>类型:</strong> ${getSnapshotTypeLabel(snapshot.metadata.snapshotType)}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #666;">
+                            <strong>大小:</strong> ${Math.round(snapshot.metadata.dataSize / 1024)}KB 
+                            (压缩后: ${Math.round(snapshot.metadata.compressedSize / 1024)}KB)
+                        </div>
+                        <details style="margin-top: 0.5rem;">
+                            <summary style="cursor: pointer; color: #007bff;">预览数据</summary>
+                            <pre style="margin: 0.5rem 0; padding: 0.5rem; background: #f8f9fa; border-radius: 4px; overflow-x: auto; font-size: 0.8rem;">${dataPreview}</pre>
+                        </details>
+                    </div>
+                `;
+            }).join('');
+            
+            snapshotContent.innerHTML = snapshotHtml;
+        }
+
+        function getSnapshotTypeLabel(type) {
+            const labels = {
+                'app_edit_before': '应用编辑前',
+                'app_delete_before': '应用删除前',
+                'apps_before_add': '新应用发布前',
+                'users_before_add': '用户注册前',
+                'full_before_sync': '数据同步前',
+                'local_before_merge': '数据合并前(本地)',
+                'remote_before_merge': '数据合并前(远程)'
+            };
+            return labels[type] || type;
+        }
+
+        function viewSnapshotDetails(snapshotId) {
+            const snapshots = logger.getSnapshots(1000);
+            const snapshot = snapshots.find(s => s.id === snapshotId);
+            
+            if (!snapshot) {
+                alert('快照不存在');
+                return;
+            }
+            
+            const detailsWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
+            detailsWindow.document.write(`
+                <html>
+                <head>
+                    <title>快照详情 - ${snapshot.description}</title>
+                    <style>
+                        body { font-family: 'Courier New', monospace; margin: 20px; }
+                        .header { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+                        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>${snapshot.description}</h2>
+                        <p><strong>时间:</strong> ${new Date(snapshot.timestamp).toLocaleString('zh-CN')}</p>
+                        <p><strong>用户:</strong> ${snapshot.metadata.user.username}</p>
+                        <p><strong>类型:</strong> ${getSnapshotTypeLabel(snapshot.metadata.snapshotType)}</p>
+                        <p><strong>数据大小:</strong> ${Math.round(snapshot.metadata.dataSize / 1024)}KB</p>
+                    </div>
+                    <h3>数据内容:</h3>
+                    <pre>${JSON.stringify(snapshot.data, null, 2)}</pre>
+                </body>
+                </html>
+            `);
+        }
+
+        function prepareRestore(snapshotId) {
+            const snapshots = logger.getSnapshots(1000);
+            const snapshot = snapshots.find(s => s.id === snapshotId);
+            
+            if (!snapshot) {
+                alert('快照不存在');
+                return;
+            }
+            
+            currentRestoreSnapshotId = snapshotId;
+            
+            const restoreInfo = document.getElementById('restore-info');
+            restoreInfo.innerHTML = `
+                <h4>${snapshot.description}</h4>
+                <p><strong>创建时间:</strong> ${new Date(snapshot.timestamp).toLocaleString('zh-CN')}</p>
+                <p><strong>创建用户:</strong> ${snapshot.metadata.user.username}</p>
+                <p><strong>快照类型:</strong> ${getSnapshotTypeLabel(snapshot.metadata.snapshotType)}</p>
+                <p><strong>数据大小:</strong> ${Math.round(snapshot.metadata.dataSize / 1024)}KB</p>
+            `;
+            
+            // 根据快照类型设置默认恢复选项
+            const restoreType = document.getElementById('restore-type');
+            if (snapshot.metadata.snapshotType?.includes('app')) {
+                restoreType.value = 'apps';
+            } else if (snapshot.metadata.snapshotType?.includes('user')) {
+                restoreType.value = 'users';
+            } else {
+                restoreType.value = 'full';
+            }
+            
+            showModal('snapshot-restore-modal');
+        }
+
+        function confirmRestore() {
+            if (!currentRestoreSnapshotId) {
+                alert('未选择快照');
+                return;
+            }
+            
+            const restoreType = document.getElementById('restore-type').value;
+            
+            if (!confirm('确定要恢复数据吗？此操作将覆盖当前数据！')) {
+                return;
+            }
+            
+            try {
+                // 在恢复前创建当前数据的备份快照
+                logger.snapshot('数据恢复前自动备份', cloudData, {
+                    snapshotType: 'auto_backup_before_restore',
+                    operation: '恢复前自动备份',
+                    restoreSnapshotId: currentRestoreSnapshotId
+                });
+                
+                // 执行恢复
+                logger.restoreFromSnapshot(currentRestoreSnapshotId, restoreType);
+                
+                // 更新UI
+                updateStats();
+                loadApps();
+                
+                closeModal('snapshot-restore-modal');
+                closeModal('snapshot-viewer-modal');
+                
+                alert('数据恢复成功！页面将刷新以显示最新数据。');
+                
+                // 刷新页面以确保UI完全更新
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+                
+            } catch (error) {
+                alert('数据恢复失败: ' + error.message);
+            } finally {
+                currentRestoreSnapshotId = null;
+            }
+        }
+
+        function clearSnapshots() {
+            if (confirm('确定要清空所有数据快照吗？此操作不可恢复。')) {
+                logger.clearSnapshots();
+                refreshSnapshots();
+                alert('快照已清空');
+            }
+        }
+
+        function exportSnapshots() {
+            const snapshots = logger.getSnapshots(1000);
+            const exportData = {
+                exportTime: new Date().toISOString(),
+                totalSnapshots: snapshots.length,
+                snapshots: snapshots
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `bee-store-logs-${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `bee-store-snapshots-${new Date().toISOString().split('T')[0]}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        // 显示日志查看按钮（仅管理员）
-        function updateLogViewerVisibility() {
-            const showLogBtn = currentUser && currentUser.id === 1;
-            const logBtn = document.getElementById('log-viewer-btn');
-            const mobileLogBtn = document.getElementById('mobile-log-viewer-btn');
+        // 从日志快速访问快照
+        function openSnapshotFromLog(snapshotId) {
+            closeModal('log-viewer-modal');
+            showSnapshotViewer();
             
-            if (logBtn) logBtn.style.display = showLogBtn ? 'inline-block' : 'none';
-            if (mobileLogBtn) mobileLogBtn.style.display = showLogBtn ? 'block' : 'none';
+            // 等待快照查看器加载完成后定位到特定快照
+            setTimeout(() => {
+                const snapshotContent = document.getElementById('snapshot-content');
+                const targetElement = snapshotContent.querySelector(`[onclick*="${snapshotId}"]`);
+                if (targetElement) {
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // 高亮显示目标快照
+                    const snapshotDiv = targetElement.closest('div[style*="border-left"]');
+                    if (snapshotDiv) {
+                        snapshotDiv.style.boxShadow = '0 0 10px rgba(255, 193, 7, 0.6)';
+                        snapshotDiv.style.background = '#fff3cd';
+                        setTimeout(() => {
+                            snapshotDiv.style.boxShadow = '';
+                            snapshotDiv.style.background = 'white';
+                        }, 3000);
+                    }
+                }
+            }, 500);
         }
 
         // 修改showUserNav函数以包含日志按钮可见性更新
@@ -3667,6 +4594,11 @@
 
         // 初始化应用
         init();
+
+        // 启动定期重试机制（每5分钟重试一次失败的日志）
+        setInterval(() => {
+            logger.retryFailedLogs().catch(e => console.warn('定期重试失败:', e));
+        }, 5 * 60 * 1000);
     </script>
 </body>
 </html>
