@@ -45,6 +45,13 @@
         .status-error { background: #dc3545; }
         .status-syncing { background: #ff9500; color: white; }
         .status-local { background: #17a2b8; color: white; }
+        .status-syncing { background: #ff9500; color: white; animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
 
         /* 头部样式 */
         .header {
@@ -1826,8 +1833,10 @@
             // 保存到本地存储
             saveToLocal(data) {
                 try {
+                    // 🔥 步骤16: 保存前确保数据完整性
+                    const cleanData = ensureDataIntegrity(data);
                     const backup = {
-                        data: data,
+                        data: cleanData,
                         timestamp: new Date().toISOString(),
                         version: '1.0'
                     };
@@ -1846,7 +1855,8 @@
                     const backup = localStorage.getItem(this.key);
                     if (backup) {
                         const parsed = JSON.parse(backup);
-                        return parsed.data;
+                        // 🔥 步骤17: 加载时确保数据完整性
+                        return ensureDataIntegrity(parsed.data);
                     }
                     return null;
                 } catch (error) {
@@ -1863,6 +1873,80 @@
 
         const localStorageManager = new LocalStorageManager();
 
+        // 🔥 步骤3: 数据版本控制函数
+        function updateAppLastModified(appId, operationType) {
+            const app = cloudData.apps.find(app => app.id === appId);
+            if (app) {
+                app.lastModified = new Date().toISOString();
+                console.log(`[BeeStore] 更新应用 ${appId} 最后修改时间: ${operationType}`);
+            }
+        }
+        
+        // 🔥 步骤4: 用户数据版本控制函数
+        function updateUserLastModified(userId, operationType) {
+            const user = cloudData.users.find(user => user.id === userId);
+            if (user) {
+                user.lastModified = new Date().toISOString();
+                console.log(`[BeeStore] 更新用户 ${userId} 最后修改时间: ${operationType}`);
+            }
+        }
+        
+        // 🔥 步骤13: 数据完整性检查函数
+        function ensureDataIntegrity(data) {
+            if (!data) return data;
+            
+            // 确保所有应用都有lastModified字段
+            if (data.apps) {
+                data.apps.forEach(app => {
+                    if (!app.lastModified) {
+                        app.lastModified = app.createdAt || new Date().toISOString();
+                        console.log(`[BeeStore] 为应用 ${app.id} 添加lastModified字段`);
+                    }
+                });
+            }
+            
+            // 确保所有用户都有lastModified字段
+            if (data.users) {
+                data.users.forEach(user => {
+                    if (!user.lastModified) {
+                        user.lastModified = user.createdAt || new Date().toISOString();
+                        console.log(`[BeeStore] 为用户 ${user.id} 添加lastModified字段`);
+                    }
+                });
+            }
+            
+            return data;
+        }
+        
+        // 🔥 步骤5: 数据冲突检测函数
+        function detectDataConflicts(localData, remoteData) {
+            const conflicts = [];
+            
+            // 检查应用数据冲突
+            if (localData.apps && remoteData.apps) {
+                localData.apps.forEach(localApp => {
+                    const remoteApp = remoteData.apps.find(app => app.id === localApp.id);
+                    if (remoteApp) {
+                        const localLastModified = new Date(localApp.lastModified || localApp.createdAt);
+                        const remoteLastModified = new Date(remoteApp.lastModified || remoteApp.createdAt);
+                        
+                        // 如果时间差小于5分钟，可能存在冲突
+                        if (Math.abs(localLastModified - remoteLastModified) < 5 * 60 * 1000) {
+                            conflicts.push({
+                                type: 'app',
+                                appId: localApp.id,
+                                appName: localApp.name,
+                                localLastModified,
+                                remoteLastModified
+                            });
+                        }
+                    }
+                });
+            }
+            
+            return conflicts;
+        }
+        
         // 🔥 步骤21: 通用重试函数
         async function retryOperation(operationType, operationFn, ...args) {
             let lastError;
@@ -2917,25 +3001,31 @@
                 lastSync: remoteData.lastSync || new Date().toISOString()
             };
 
-            // 合并用户数据（基于ID和创建时间）
+            // 🔥 步骤1: 合并用户数据（基于ID和lastModified时间）
             const allUsers = [...cloudData.users, ...remoteData.users];
             const userMap = new Map();
             
             allUsers.forEach(user => {
                 const existing = userMap.get(user.id);
-                if (!existing || new Date(user.createdAt) >= new Date(existing.createdAt)) {
+                const userLastModified = user.lastModified || user.createdAt;
+                const existingLastModified = existing?.lastModified || existing?.createdAt;
+                
+                if (!existing || new Date(userLastModified) >= new Date(existingLastModified)) {
                     userMap.set(user.id, user);
                 }
             });
             merged.users = Array.from(userMap.values());
 
-            // 合并应用数据（基于ID和创建时间）
+            // 🔥 步骤2: 合并应用数据（基于ID和lastModified时间）
             const allApps = [...cloudData.apps, ...remoteData.apps];
             const appMap = new Map();
             
             allApps.forEach(app => {
                 const existing = appMap.get(app.id);
-                if (!existing || new Date(app.createdAt) >= new Date(existing.createdAt)) {
+                const appLastModified = app.lastModified || app.createdAt;
+                const existingLastModified = existing?.lastModified || existing?.createdAt;
+                
+                if (!existing || new Date(appLastModified) >= new Date(existingLastModified)) {
                     appMap.set(app.id, app);
                 }
             });
@@ -3006,20 +3096,20 @@
                 // 🔥 步骤14-15: 首先尝试从本地存储加载数据（快速启动）
                 const localData = localStorageManager.loadFromLocal();
                 if (localData) {
-                    cloudData = localData;
+                    cloudData = ensureDataIntegrity(localData); // 🔥 步骤14: 确保数据完整性
                     console.log('[BeeStore] 从本地存储加载数据成功');
                     
                                          // 立即更新UI
                      checkLoginStatus();
                      loadApps();
                      updateStats();
-                     updateStatus('📱 使用本地数据', 'local');
+                     updateStatus('📱 使用本地数据（离线模式）', 'local');
                 }
                 
                 // 🔥 步骤16-17: 异步从云端加载并合并数据
                 try {
                     const remoteData = await cloudStorage.loadData();
-                    const mergedData = mergeCloudData(remoteData);
+                    const mergedData = ensureDataIntegrity(mergeCloudData(remoteData)); // 🔥 步骤15: 确保合并数据完整性
                     
                     if (JSON.stringify(mergedData) !== JSON.stringify(cloudData)) {
                         cloudData = mergedData;
@@ -3041,15 +3131,22 @@
                         // 既没有本地数据也没有云端数据，使用默认数据
                         initLocalData();
                     }
-                                         updateStatus('⚠️ 使用本地数据', 'local');
+                                         updateStatus('⚠️ 使用本地数据（云端连接失败）', 'local');
                 }
                 
-                // 确保数据结构兼容性（为旧数据添加新字段）
+                // 🔥 步骤12: 确保数据结构兼容性（为旧数据添加新字段）
                 if (cloudData.apps) {
                     cloudData.apps.forEach(app => {
                         if (!app.likes) app.likes = [];
                         if (!app.favorites) app.favorites = [];
                         if (!app.comments) app.comments = [];
+                        if (!app.lastModified) app.lastModified = app.createdAt; // 为旧数据添加lastModified
+                    });
+                }
+                
+                if (cloudData.users) {
+                    cloudData.users.forEach(user => {
+                        if (!user.lastModified) user.lastModified = user.createdAt; // 为旧用户数据添加lastModified
                     });
                 }
                 
@@ -3751,6 +3848,9 @@
                     app.likes.push(currentUser.id);
                 }
 
+                // 🔥 步骤6: 更新应用最后修改时间
+                updateAppLastModified(appId, isLiking ? '点赞' : '取消点赞');
+
                 // 🔥 步骤8: 立即保存到本地存储
                 localStorageManager.saveToLocal(cloudData);
                 
@@ -3823,6 +3923,9 @@
                 } else {
                     app.favorites.push(currentUser.id);
                 }
+
+                // 🔥 步骤7: 更新应用最后修改时间
+                updateAppLastModified(appId, isFavoriting ? '收藏' : '取消收藏');
 
                 // 🔥 步骤12: 立即保存到本地存储
                 localStorageManager.saveToLocal(cloudData);
@@ -3916,6 +4019,9 @@
 
                 app.comments.push(newComment);
                 input.value = '';
+
+                // 🔥 步骤8: 更新应用最后修改时间
+                updateAppLastModified(appId, '添加评论');
 
                 // 🔥 步骤13: 立即保存到本地存储
                 localStorageManager.saveToLocal(cloudData);
@@ -4382,7 +4488,8 @@
                     username,
                     email,
                     password,
-                    createdAt: new Date().toISOString()
+                    createdAt: new Date().toISOString(),
+                    lastModified: new Date().toISOString() // 🔥 步骤11: 初始化新用户的lastModified字段
                 };
 
                 // 在添加用户前创建快照
@@ -4537,6 +4644,7 @@
                         app.description = description;
                         app.category = category;
                         app.screenshot = screenshot;
+                        app.lastModified = new Date().toISOString(); // 🔥 步骤10: 更新编辑应用的lastModified
                     }
                 } else {
                     // 发布新应用模式
@@ -4552,7 +4660,8 @@
                         likes: [],
                         favorites: [],
                         comments: [],
-                        createdAt: new Date().toISOString()
+                        createdAt: new Date().toISOString(),
+                        lastModified: new Date().toISOString() // 🔥 步骤9: 初始化lastModified字段
                     };
                     cloudData.apps.push(newApp);
                 }
