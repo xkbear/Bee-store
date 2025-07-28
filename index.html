@@ -28,8 +28,23 @@
 
         /* 状态指示器 - 隐藏不显示给用户 */
         .status-indicator {
-            display: none !important;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 1002;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
+
+        .status-connected { background: #28a745; }
+        .status-error { background: #dc3545; }
+        .status-syncing { background: #ff9500; color: white; }
+        .status-local { background: #17a2b8; color: white; }
 
         /* 头部样式 */
         .header {
@@ -1734,6 +1749,13 @@
             lastSync: null
         };
 
+        // 🔥 步骤20: 重试配置
+        const RETRY_CONFIG = {
+            maxRetries: 3,
+            retryDelay: [1000, 2000, 5000], // 递增延迟
+            operations: ['like', 'favorite', 'comment', 'sync']
+        };
+
         // 云存储API类
         class CloudStorage {
             constructor() {
@@ -1794,6 +1816,73 @@
         }
 
         const cloudStorage = new CloudStorage();
+
+        // 🔥 步骤3&4: 本地存储管理器类
+        class LocalStorageManager {
+            constructor() {
+                this.key = 'beestoreLocalBackup';
+            }
+            
+            // 保存到本地存储
+            saveToLocal(data) {
+                try {
+                    const backup = {
+                        data: data,
+                        timestamp: new Date().toISOString(),
+                        version: '1.0'
+                    };
+                    localStorage.setItem(this.key, JSON.stringify(backup));
+                    console.log('[BeeStore] 数据已保存到本地存储');
+                    return true;
+                } catch (error) {
+                    console.error('[BeeStore] 本地存储失败:', error);
+                    return false;
+                }
+            }
+            
+            // 从本地存储加载
+            loadFromLocal() {
+                try {
+                    const backup = localStorage.getItem(this.key);
+                    if (backup) {
+                        const parsed = JSON.parse(backup);
+                        return parsed.data;
+                    }
+                    return null;
+                } catch (error) {
+                    console.error('[BeeStore] 本地存储读取失败:', error);
+                    return null;
+                }
+            }
+            
+            // 清空本地存储
+            clearLocal() {
+                localStorage.removeItem(this.key);
+            }
+        }
+
+        const localStorageManager = new LocalStorageManager();
+
+        // 🔥 步骤21: 通用重试函数
+        async function retryOperation(operationType, operationFn, ...args) {
+            let lastError;
+            
+            for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+                try {
+                    return await operationFn(...args);
+                } catch (error) {
+                    lastError = error;
+                    console.warn(`[BeeStore] ${operationType} 操作失败 (尝试 ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1}):`, error);
+                    
+                    if (attempt < RETRY_CONFIG.maxRetries) {
+                        const delay = RETRY_CONFIG.retryDelay[attempt] || RETRY_CONFIG.retryDelay[RETRY_CONFIG.retryDelay.length - 1];
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+            
+            throw lastError;
+        }
 
         // 日志记录系统
         class Logger {
@@ -2219,35 +2308,25 @@
             // 数据快照功能
             snapshot(description, data, metadata = {}) {
                 try {
-                    // 创建深拷贝并压缩数据
+                    // 🔥 步骤5-7: 创建深拷贝并确保包含完整信息
                     const snapshotData = JSON.parse(JSON.stringify(data));
-                    const compressedData = this.compressData(snapshotData);
                     
-                    // 获取用户信息（优先currentUser，备选localStorage）
-                    let userInfo = { id: null, username: 'guest' };
-                    if (currentUser && currentUser.id && currentUser.username) {
-                        userInfo = {
-                            id: currentUser.id,
-                            username: currentUser.username
-                        };
-                    } else {
-                        // 从localStorage获取备选用户信息
-                        try {
-                            const storedUser = localStorage.getItem('currentUser');
-                            if (storedUser) {
-                                const userData = JSON.parse(storedUser);
-                                if (userData.id && userData.username) {
-                                    userInfo = {
-                                        id: userData.id,
-                                        username: userData.username
-                                    };
-                                }
-                            }
-                        } catch (e) {
-                            console.warn('无法从localStorage获取用户信息:', e);
+                    // 为快照数据添加完整的上下文信息
+                    const enrichedData = {
+                        ...snapshotData,
+                        snapshotContext: {
+                            currentUser: currentUser ? {
+                                id: currentUser.id,
+                                username: currentUser.username
+                            } : null,
+                            timestamp: new Date().toISOString(),
+                            totalApps: cloudData.apps ? cloudData.apps.length : 0,
+                            totalUsers: cloudData.users ? cloudData.users.length : 0
                         }
-                    }
-
+                    };
+                    
+                    const compressedData = this.compressData(enrichedData);
+                    
                     const snapshot = {
                         id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                         timestamp: new Date().toISOString(),
@@ -2255,11 +2334,18 @@
                         data: compressedData,
                         metadata: {
                             ...metadata,
-                            dataSize: JSON.stringify(data).length,
+                            dataSize: JSON.stringify(enrichedData).length,
                             compressedSize: JSON.stringify(compressedData).length,
-                            user: userInfo,
-                            userVerified: currentUser ? true : false,
-                            userSource: currentUser ? 'currentUser' : 'localStorage'
+                            user: currentUser ? {
+                                id: currentUser.id,
+                                username: currentUser.username
+                            } : { id: null, username: 'guest' },
+                            // 添加更多上下文信息
+                            environment: {
+                                userAgent: navigator.userAgent,
+                                url: window.location.href,
+                                timestamp: new Date().toISOString()
+                            }
                         },
                         type: 'SNAPSHOT'
                     };
@@ -2879,62 +2965,96 @@
             }
         }
 
-        // 初始化
-        async function init() {
-            logger.info('应用启动', { operation: '应用启动' });
-            
-            // 检查本地缓存是否新鲜
-            const cachedData = localCache.loadFromLocal();
-            const isCacheFresh = localCache.isCacheFresh();
-            
-            let useQuickStart = false;
-            
-            if (cachedData && isCacheFresh) {
-                // 缓存新鲜，快速启动
-                cloudData = cachedData;
-                updateStatus('📱 已连接', 'connected');
-                logger.info('使用新鲜缓存数据快速启动', { 
-                    localUsers: cloudData.users?.length || 0,
-                    localApps: cloudData.apps?.length || 0,
-                    cacheAge: '5分钟内',
-                    operation: '新鲜缓存启动'
-                });
+        // 🔥 步骤18: 提取登录状态检查逻辑
+        function checkLoginStatus() {
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                let user = cloudData.users.find(u => u.id === userData.id);
                 
-                // 立即显示界面
-                initializeInterface();
-                useQuickStart = true;
-            } else {
-                const isMobile = navigator.userAgent.includes('Mobile');
-                
-                // 移动端策略：如果有任何缓存（即使过期），都先使用缓存避免白屏
-                if (cachedData && isMobile) {
-                    cloudData = cachedData;
-                    updateStatus('🔄 正在更新...', 'connected');
-                    initializeInterface();
-                    useQuickStart = true; // 标记为快速启动，后续云端数据加载后静默更新
+                if (user) {
+                    currentUser = user;
+                    showUserNav();
                 } else {
-                    // 桌面端或无缓存，正常等待云端数据
-                    updateStatus('☁️ 正在加载...', 'syncing');
+                    // 处理用户数据同步问题
+                    const existingUserByName = cloudData.users.find(u => u.username === userData.username);
+                    if (existingUserByName) {
+                        currentUser = existingUserByName;
+                        localStorage.setItem('currentUser', JSON.stringify(existingUserByName));
+                        showUserNav();
+                    } else {
+                        localStorage.removeItem('currentUser');
+                        showGuestNav();
+                    }
                 }
+            } else {
+                showGuestNav();
             }
+        }
+
+        // 🔥 步骤14-17: 修改初始化函数，优先从本地存储加载数据
+        async function init() {
+            logger.info('Bee Store 应用启动', { 
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent,
+                operation: '应用启动'
+            });
+            
+            updateStatus('☁️ 正在加载数据...', 'syncing');
             
             try {
-                // 从云端加载数据
-                const remoteData = await cloudStorage.loadData();
-                
-                if (useQuickStart) {
-                    // 已经快速启动，后台更新数据
-                    updateStatus('🔄 正在更新...', 'syncing');
-                    cloudData = mergeCloudData(remoteData);
+                // 🔥 步骤14-15: 首先尝试从本地存储加载数据（快速启动）
+                const localData = localStorageManager.loadFromLocal();
+                if (localData) {
+                    cloudData = localData;
+                    console.log('[BeeStore] 从本地存储加载数据成功');
                     
-                    // 静默更新界面（如果有数据变化）
-                    loadApps();
-                    updateStats();
-                } else {
-                    // 首次加载或缓存过期，直接使用云端数据
-                    cloudData = await mergeCloudData(remoteData);
-                    initializeInterface();
+                                         // 立即更新UI
+                     checkLoginStatus();
+                     loadApps();
+                     updateStats();
+                     updateStatus('📱 使用本地数据', 'local');
                 }
+                
+                // 🔥 步骤16-17: 异步从云端加载并合并数据
+                try {
+                    const remoteData = await cloudStorage.loadData();
+                    const mergedData = mergeCloudData(remoteData);
+                    
+                    if (JSON.stringify(mergedData) !== JSON.stringify(cloudData)) {
+                        cloudData = mergedData;
+                        
+                        // 保存合并后的数据到本地存储
+                        localStorageManager.saveToLocal(cloudData);
+                        
+                        // 更新UI
+                        loadApps();
+                        updateStats();
+                        updateStatus('☁️ 数据同步完成', 'connected');
+                        console.log('[BeeStore] 云端数据同步完成');
+                    } else {
+                        updateStatus('☁️ 数据已是最新', 'connected');
+                    }
+                } catch (cloudError) {
+                    console.warn('云端数据加载失败，使用本地数据:', cloudError);
+                    if (!localData) {
+                        // 既没有本地数据也没有云端数据，使用默认数据
+                        initLocalData();
+                    }
+                                         updateStatus('⚠️ 使用本地数据', 'local');
+                }
+                
+                // 确保数据结构兼容性（为旧数据添加新字段）
+                if (cloudData.apps) {
+                    cloudData.apps.forEach(app => {
+                        if (!app.likes) app.likes = [];
+                        if (!app.favorites) app.favorites = [];
+                        if (!app.comments) app.comments = [];
+                    });
+                }
+                
+                // 🔥 步骤19: 检查登录状态
+                checkLoginStatus();
                 
                 // 保存合并后的数据到本地缓存
                 localCache.saveToLocal(cloudData);
@@ -2948,77 +3068,19 @@
                 updateDropdownSelection('sort-mobile', 'newest');
                 
             } catch (error) {
-                console.error('云端数据加载失败:', error);
-                
-                const isMobile = navigator.userAgent.includes('Mobile');
-                
-                if (!useQuickStart) {
-                    // 没有快速启动，需要处理降级
-                    if (cachedData) {
-                        // 有缓存数据，使用缓存作为降级
-                        cloudData = cachedData;
-                        updateStatus('📱 已连接', 'connected');
-                        logger.warn('云端加载失败，降级使用本地缓存', { 
-                            localUsers: cloudData.users?.length || 0,
-                            localApps: cloudData.apps?.length || 0,
-                            isMobile: isMobile,
-                            error: error.message,
-                            operation: '降级到缓存'
-                        });
-                        initializeInterface();
-                    } else {
-                        // 无缓存数据，使用示例数据
-                        updateStatus('📱 已连接', 'connected');
-                        initLocalData();
-                        showGuestNav();
-                        loadApps();
-                        updateStats();
-                        
-                        logger.error('首次访问且云端加载失败，使用示例数据', { 
-                            isMobile: isMobile,
-                            error: error.message,
-                            operation: '降级到示例数据'
-                        });
-                    }
-                } else {
-                    // 已经快速启动，后台同步失败不影响用户
-                    updateStatus('📱 已连接', 'connected');
-                    logger.warn('快速启动后后台同步失败', { 
-                        isMobile: isMobile,
-                        error: error.message,
-                        operation: '后台同步失败'
-                    });
-                }
+                console.error('初始化失败:', error);
+                updateStatus('❌ 初始化失败', 'error');
+                initLocalData();
+                checkLoginStatus();
+                loadApps();
+                updateStats();
                 
                 // 初始化自定义下拉菜单状态
                 updateDropdownSelection('category', '');
                 updateDropdownSelection('sort', 'newest');
                 updateDropdownSelection('category-mobile', '');
                 updateDropdownSelection('sort-mobile', 'newest');
-                
-                // 提示用户检查网络连接（仅在首次访问失败时）
-                if (!useQuickStart && !cachedData) {
-                    setTimeout(() => {
-                        console.log('提示：如果是首次访问或环境变量未配置，这是正常现象。数据将使用本地存储。');
-                    }, 2000);
-                }
             }
-            
-            // 添加页面刷新保护
-            setupPageRefreshProtection();
-        }
-
-        // 页面刷新保护
-        function setupPageRefreshProtection() {
-            window.addEventListener('beforeunload', (event) => {
-                const pendingOps = localCache.getPendingOperations();
-                if (pendingOps.length > 0) {
-                    const message = `您有 ${pendingOps.length} 个操作正在同步到云端，刷新可能导致数据丢失。确定要离开吗？`;
-                    event.preventDefault();
-                    event.returnValue = message;
-                    return message;
-                }
-            });
         }
 
         // 初始化本地数据
@@ -3590,9 +3652,20 @@
                 }
 
                 cloudData.apps = cloudData.apps.filter(app => app.id !== appId);
-                await syncData();
+                
+                // 🔥 步骤24: 立即保存到本地存储
+                localStorageManager.saveToLocal(cloudData);
+                
+                // 立即更新UI
                 loadApps();
-                alert('删除成功！');
+                
+                // 异步同步到云端
+                try {
+                    await syncData();
+                    alert('删除成功！');
+                } catch (error) {
+                    alert('删除成功！但云端同步失败，数据已保存到本地。');
+                }
             } catch (error) {
                 logger.error('应用删除失败', {
                     appId: appId,
@@ -3678,6 +3751,23 @@
                     app.likes.push(currentUser.id);
                 }
 
+                // 🔥 步骤8: 立即保存到本地存储
+                localStorageManager.saveToLocal(cloudData);
+                
+                // 🔥 步骤9: 立即更新UI
+                loadApps();
+                
+                // 🔥 步骤23: 异步同步到云端（不阻塞用户体验）
+                updateStatus('☁️ 正在同步点赞数据...', 'syncing');
+                
+                // 使用重试机制进行同步
+                retryOperation('点赞同步', syncData).then(() => {
+                    updateStatus('☁️ 点赞同步成功', 'connected');
+                }).catch((error) => {
+                    console.error('点赞同步最终失败:', error);
+                    updateStatus('⚠️ 点赞已保存本地，云端同步失败', 'error');
+                });
+
                 // 记录点赞操作
                 logger.info('点赞操作', {
                     appId: appId,
@@ -3687,24 +3777,6 @@
                     operation: '用户互动'
                 });
 
-                // 本地优先策略：立即更新UI和本地缓存
-                localCache.saveToLocal(cloudData);
-                loadApps(); // 立即更新UI，用户看到即时效果
-                
-                // 添加到异步同步队列
-                await syncQueue.addOperation({
-                    type: 'like',
-                    appId: appId,
-                    userId: currentUser.id,
-                    action: isLiking ? '点赞' : '取消点赞',
-                    data: {
-                        appName: app.name,
-                        authorId: app.authorId
-                    }
-                });
-
-                // 显示操作完成状态
-                updateStatus('✅ 点赞已更新', 'connected');
             } catch (error) {
                 logger.error('点赞操作失败', {
                     appId: appId,
@@ -3752,6 +3824,23 @@
                     app.favorites.push(currentUser.id);
                 }
 
+                // 🔥 步骤12: 立即保存到本地存储
+                localStorageManager.saveToLocal(cloudData);
+                
+                // 🔥 步骤12: 立即更新UI
+                loadApps();
+                
+                // 🔥 步骤23: 异步同步到云端（不阻塞用户体验）
+                updateStatus('☁️ 正在同步收藏数据...', 'syncing');
+                
+                // 使用重试机制进行同步
+                retryOperation('收藏同步', syncData).then(() => {
+                    updateStatus('☁️ 收藏同步成功', 'connected');
+                }).catch((error) => {
+                    console.error('收藏同步最终失败:', error);
+                    updateStatus('⚠️ 收藏已保存本地，云端同步失败', 'error');
+                });
+
                 // 记录收藏操作
                 logger.info('收藏操作', {
                     appId: appId,
@@ -3761,24 +3850,6 @@
                     operation: '用户互动'
                 });
 
-                // 本地优先策略：立即更新UI和本地缓存
-                localCache.saveToLocal(cloudData);
-                loadApps(); // 立即更新UI，用户看到即时效果
-                
-                // 添加到异步同步队列
-                await syncQueue.addOperation({
-                    type: 'favorite',
-                    appId: appId,
-                    userId: currentUser.id,
-                    action: isFavoriting ? '收藏' : '取消收藏',
-                    data: {
-                        appName: app.name,
-                        authorId: app.authorId
-                    }
-                });
-
-                // 显示操作完成状态
-                updateStatus('✅ 收藏已更新', 'connected');
             } catch (error) {
                 logger.error('收藏操作失败', {
                     appId: appId,
@@ -3846,6 +3917,23 @@
                 app.comments.push(newComment);
                 input.value = '';
 
+                // 🔥 步骤13: 立即保存到本地存储
+                localStorageManager.saveToLocal(cloudData);
+                
+                // 🔥 步骤13: 立即更新UI
+                loadApps();
+                
+                // 🔥 步骤23: 异步同步到云端（不阻塞用户体验）
+                updateStatus('☁️ 正在同步评论数据...', 'syncing');
+                
+                // 使用重试机制进行同步
+                retryOperation('评论同步', syncData).then(() => {
+                    updateStatus('☁️ 评论同步成功', 'connected');
+                }).catch((error) => {
+                    console.error('评论同步最终失败:', error);
+                    updateStatus('⚠️ 评论已保存本地，云端同步失败', 'error');
+                });
+
                 // 记录评论操作
                 logger.info('添加评论', {
                     appId: appId,
@@ -3856,26 +3944,6 @@
                     operation: '用户互动'
                 });
 
-                // 本地优先策略：立即更新UI和本地缓存
-                localCache.saveToLocal(cloudData);
-                loadApps(); // 立即更新UI，用户看到即时效果
-                
-                // 添加到异步同步队列
-                await syncQueue.addOperation({
-                    type: 'comment_add',
-                    appId: appId,
-                    userId: currentUser.id,
-                    commentId: newComment.id,
-                    action: '添加评论',
-                    data: {
-                        appName: app.name,
-                        commentContent: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
-                        authorId: app.authorId
-                    }
-                });
-
-                // 显示操作完成状态
-                updateStatus('✅ 评论已添加', 'connected');
             } catch (error) {
                 logger.error('添加评论失败', {
                     appId: appId,
@@ -4260,12 +4328,8 @@
                 showUserNav();
                 closeModal('login-modal');
                 
-                logger.info('用户登录成功', {
-                    userId: user.id,
-                    username: user.username,
-                    isMobile: navigator.userAgent.includes('Mobile'),
-                    operation: '用户登录'
-                });
+                // 🔥 步骤2: 重新加载应用列表以更新互动按钮状态
+                loadApps();
                 
                 alert('登录成功！');
                 
@@ -4339,31 +4403,40 @@
                 // 添加用户到本地数据
                 cloudData.users.push(newUser);
                 
+                // 🔥 步骤24: 立即保存到本地存储（确保数据不丢失）
+                localStorageManager.saveToLocal(cloudData);
+                
                 // 立即设置当前用户和本地存储（确保即使同步失败也能保持登录状态）
                 currentUser = newUser;
                 localStorage.setItem('currentUser', JSON.stringify(newUser));
                 showUserNav();
                 closeModal('register-modal');
                 updateStats();
-                loadApps(); // 重新渲染应用列表以更新按钮状态
+                
+                // 🔥 步骤1: 重新加载应用列表以更新互动按钮状态
+                loadApps();
 
-                // 本地优先策略：立即保存到本地缓存
-                localCache.saveToLocal(cloudData);
+                // 尝试同步到云端，但不阻塞用户体验
+                updateStatus('☁️ 正在保存用户数据...', 'syncing');
                 
-                // 添加到异步同步队列
-                await syncQueue.addOperation({
-                    type: 'user_register',
-                    userId: newUser.id,
-                    action: '用户注册',
-                    data: {
-                        username: newUser.username,
-                        email: newUser.email
-                    }
-                });
-                
-                // 显示注册成功状态
-                updateStatus('✅ 注册成功', 'connected');
-                alert('注册成功！');
+                try {
+                    await syncData();
+                    alert('注册成功！用户数据已同步到云端');
+                } catch (syncError) {
+                    console.error('用户数据同步失败:', syncError);
+                    alert('注册成功！但数据同步失败，数据已保存到本地。请检查网络连接。');
+                    updateStatus('⚠️ 数据仅保存在本地', 'error');
+                    
+                    // 设置定时重试同步
+                    setTimeout(async () => {
+                        try {
+                            await syncData();
+                            updateStatus('☁️ 数据同步成功', 'connected');
+                        } catch (retryError) {
+                            console.error('重试同步失败:', retryError);
+                        }
+                    }, 5000); // 5秒后重试
+                }
 
             } catch (error) {
                 // 移除已添加的用户数据（如果添加失败）
@@ -4484,8 +4557,10 @@
                     cloudData.apps.push(newApp);
                 }
 
-                // 本地优先策略：立即更新UI和本地缓存
-                localCache.saveToLocal(cloudData);
+                // 🔥 步骤24: 立即保存到本地存储（确保数据不丢失）
+                localStorageManager.saveToLocal(cloudData);
+                
+                // 先更新UI，确保用户能立即看到变化
                 closeModal('publish-modal');
                 updateStats();
                 loadApps();
