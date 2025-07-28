@@ -26,27 +26,10 @@
             padding: 0 20px;
         }
 
-        /* 状态指示器 */
+        /* 状态指示器 - 隐藏不显示给用户 */
         .status-indicator {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 1002;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: none !important;
         }
-
-        .status-connected { background: #28a745; }
-        .status-error { background: #dc3545; }
-        .status-syncing { background: #ff9500; color: white; }
-        .status-syncing-background { background: #17a2b8; color: white; }
-        .status-sync-failed { background: #ffc107; color: #212529; }
-        .status-sync-pending { background: #6f42c1; color: white; }
 
         /* 头部样式 */
         .header {
@@ -1249,10 +1232,7 @@
     </style>
 </head>
 <body>
-    <!-- 状态指示器 -->
-    <div id="status-indicator" class="status-indicator status-syncing">
-        🐝 正在连接到 Bee Store
-    </div>
+
 
     <div class="header">
         <div class="container">
@@ -2850,23 +2830,18 @@
             return merged;
         }
 
-        // 状态管理
-        let statusHideTimeout = null;
+        // 状态管理 - 保留用于内部日志，不显示给用户
         function updateStatus(message, type = 'syncing') {
-            const indicator = document.getElementById('status-indicator');
-            indicator.textContent = message;
-            indicator.className = `status-indicator status-${type}`;
-            indicator.style.display = 'block';
-            // 清除之前的定时器
-            if (statusHideTimeout) {
-                clearTimeout(statusHideTimeout);
-                statusHideTimeout = null;
-            }
-            // 成功状态自动隐藏
-            if (type === 'connected') {
-                statusHideTimeout = setTimeout(() => {
-                    indicator.style.display = 'none';
-                }, 3000);
+            // 只记录到控制台，不显示UI状态
+            console.log(`[BeeStore Status] ${type.toUpperCase()}: ${message}`);
+            
+            // 记录状态变化到日志（用于调试）
+            if (type === 'error' || type === 'sync-failed') {
+                logger.warn('系统状态变化', { 
+                    message: message, 
+                    type: type,
+                    operation: '状态更新'
+                });
             }
         }
 
