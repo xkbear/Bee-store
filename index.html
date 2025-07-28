@@ -44,6 +44,9 @@
         .status-connected { background: #28a745; }
         .status-error { background: #dc3545; }
         .status-syncing { background: #ff9500; color: white; }
+        .status-syncing-background { background: #17a2b8; color: white; }
+        .status-sync-failed { background: #ffc107; color: #212529; }
+        .status-sync-pending { background: #6f42c1; color: white; }
 
         /* 头部样式 */
         .header {
@@ -2226,6 +2229,31 @@
                     const snapshotData = JSON.parse(JSON.stringify(data));
                     const compressedData = this.compressData(snapshotData);
                     
+                    // 获取用户信息（优先currentUser，备选localStorage）
+                    let userInfo = { id: null, username: 'guest' };
+                    if (currentUser && currentUser.id && currentUser.username) {
+                        userInfo = {
+                            id: currentUser.id,
+                            username: currentUser.username
+                        };
+                    } else {
+                        // 从localStorage获取备选用户信息
+                        try {
+                            const storedUser = localStorage.getItem('currentUser');
+                            if (storedUser) {
+                                const userData = JSON.parse(storedUser);
+                                if (userData.id && userData.username) {
+                                    userInfo = {
+                                        id: userData.id,
+                                        username: userData.username
+                                    };
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('无法从localStorage获取用户信息:', e);
+                        }
+                    }
+
                     const snapshot = {
                         id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
                         timestamp: new Date().toISOString(),
@@ -2235,10 +2263,9 @@
                             ...metadata,
                             dataSize: JSON.stringify(data).length,
                             compressedSize: JSON.stringify(compressedData).length,
-                            user: currentUser ? {
-                                id: currentUser.id,
-                                username: currentUser.username
-                            } : { id: null, username: 'guest' }
+                            user: userInfo,
+                            userVerified: currentUser ? true : false,
+                            userSource: currentUser ? 'currentUser' : 'localStorage'
                         },
                         type: 'SNAPSHOT'
                     };
@@ -2380,6 +2407,367 @@
 
         const logger = new Logger();
 
+        // 本地缓存管理类
+        class LocalCache {
+            constructor() {
+                this.cacheKey = 'beestoreCloudData';
+                this.metaKey = 'beestoreCloudMeta';
+            }
+
+            saveToLocal(data) {
+                try {
+                    const cacheData = {
+                        data: data,
+                        lastModified: new Date().toISOString(),
+                        version: Date.now()
+                    };
+                    
+                    localStorage.setItem(this.cacheKey, JSON.stringify(cacheData));
+                    
+                    const meta = {
+                        syncStatus: 'pending',
+                        lastSyncAttempt: null,
+                        pendingOperations: this.getPendingOperations().length
+                    };
+                    localStorage.setItem(this.metaKey, JSON.stringify(meta));
+                    
+                    return true;
+                } catch (error) {
+                    logger.error('保存本地缓存失败', { error: error.message });
+                    return false;
+                }
+            }
+
+            loadFromLocal() {
+                try {
+                    const cached = localStorage.getItem(this.cacheKey);
+                    if (!cached) return null;
+                    
+                    const cacheData = JSON.parse(cached);
+                    return cacheData.data;
+                } catch (error) {
+                    logger.error('加载本地缓存失败', { error: error.message });
+                    return null;
+                }
+            }
+
+            getLocalMeta() {
+                try {
+                    const meta = localStorage.getItem(this.metaKey);
+                    return meta ? JSON.parse(meta) : null;
+                } catch (error) {
+                    return null;
+                }
+            }
+
+            isLocalNewer(localTime, remoteTime) {
+                if (!localTime || !remoteTime) return false;
+                return new Date(localTime) > new Date(remoteTime);
+            }
+
+            markSynced() {
+                try {
+                    const meta = this.getLocalMeta() || {};
+                    meta.syncStatus = 'synced';
+                    meta.lastSyncAttempt = new Date().toISOString();
+                    localStorage.setItem(this.metaKey, JSON.stringify(meta));
+                } catch (error) {
+                    logger.error('标记同步状态失败', { error: error.message });
+                }
+            }
+
+            addPendingOperation(operation) {
+                try {
+                    const operations = this.getPendingOperations();
+                    operations.push({
+                        ...operation,
+                        id: Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        timestamp: new Date().toISOString()
+                    });
+                    localStorage.setItem('beestorePendingOps', JSON.stringify(operations));
+                } catch (error) {
+                    logger.error('添加待同步操作失败', { error: error.message });
+                }
+            }
+
+            getPendingOperations() {
+                try {
+                    const ops = localStorage.getItem('beestorePendingOps');
+                    return ops ? JSON.parse(ops) : [];
+                } catch (error) {
+                    return [];
+                }
+            }
+
+            clearPendingOperations() {
+                localStorage.removeItem('beestorePendingOps');
+            }
+        }
+
+        // 异步同步队列管理类
+        class SyncQueue {
+            constructor(localCache) {
+                this.localCache = localCache;
+                this.isProcessing = false;
+                this.maxRetries = 3;
+                this.retryDelay = 2000; // 2秒
+            }
+
+            async addOperation(operation) {
+                // 对于可切换操作（点赞、收藏），移除冲突的旧操作
+                this.removeConflictingOperations(operation);
+                
+                // 检查操作去重
+                if (this.isDuplicateOperation(operation)) {
+                    logger.info('跳过重复操作', { 
+                        type: operation.type,
+                        target: operation.appId || operation.userId,
+                        operation: '操作去重'
+                    });
+                    return;
+                }
+                
+                // 添加到本地队列
+                this.localCache.addPendingOperation(operation);
+                
+                // 触发异步处理
+                this.processQueueAsync();
+            }
+
+            isDuplicateOperation(newOperation) {
+                const pendingOps = this.localCache.getPendingOperations();
+                
+                // 生成操作唯一标识
+                const newOpKey = this.generateOperationKey(newOperation);
+                
+                // 检查是否存在相同操作（5分钟内的操作认为是重复）
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+                
+                return pendingOps.some(op => {
+                    const opTime = new Date(op.timestamp);
+                    const opKey = this.generateOperationKey(op);
+                    
+                    return opKey === newOpKey && opTime > fiveMinutesAgo;
+                });
+            }
+
+            generateOperationKey(operation) {
+                // 根据操作类型生成唯一标识
+                switch (operation.type) {
+                    case 'like':
+                    case 'favorite':
+                        return `${operation.type}_${operation.appId}_${operation.userId}`;
+                    case 'comment_add':
+                        // 评论按内容去重（防止短时间内重复提交相同评论）
+                        return `${operation.type}_${operation.appId}_${operation.userId}_${operation.data?.commentContent}`;
+                    case 'comment_delete':
+                        return `${operation.type}_${operation.commentId}_${operation.userId}`;
+                    case 'app_publish':
+                    case 'app_edit':
+                        return `${operation.type}_${operation.appId}_${operation.userId}`;
+                    case 'user_register':
+                        return `${operation.type}_${operation.userId}`;
+                    default:
+                        // 默认按类型+用户+时间去重
+                        return `${operation.type}_${operation.userId}_${Math.floor(Date.now() / 60000)}`; // 按分钟去重
+                }
+            }
+
+            removeConflictingOperations(newOperation) {
+                // 对于可切换的操作（点赞、收藏），移除同一目标的旧操作
+                if (newOperation.type === 'like' || newOperation.type === 'favorite') {
+                    try {
+                        const operations = this.localCache.getPendingOperations();
+                        const conflictKey = `${newOperation.type}_${newOperation.appId}_${newOperation.userId}`;
+                        
+                        const filteredOps = operations.filter(op => {
+                            const opKey = this.generateOperationKey(op);
+                            return opKey !== conflictKey;
+                        });
+                        
+                        const removedCount = operations.length - filteredOps.length;
+                        if (removedCount > 0) {
+                            localStorage.setItem('beestorePendingOps', JSON.stringify(filteredOps));
+                            logger.info('移除冲突的待同步操作', {
+                                type: newOperation.type,
+                                target: newOperation.appId,
+                                removedCount: removedCount,
+                                operation: '操作冲突处理'
+                            });
+                        }
+                    } catch (error) {
+                        logger.error('移除冲突操作失败', { 
+                            error: error.message,
+                            operation: '操作冲突处理失败'
+                        });
+                    }
+                }
+            }
+
+            async processQueueAsync() {
+                if (this.isProcessing) return;
+                
+                // 延迟处理，避免频繁同步
+                setTimeout(() => {
+                    this.processQueue();
+                }, 500);
+            }
+
+            async processQueue() {
+                if (this.isProcessing) return;
+                this.isProcessing = true;
+
+                try {
+                    const operations = this.localCache.getPendingOperations();
+                    if (operations.length === 0) {
+                        this.isProcessing = false;
+                        return;
+                    }
+
+                    logger.info('开始处理同步队列', { 
+                        operationsCount: operations.length,
+                        operation: '队列同步'
+                    });
+
+                    updateStatus('☁️ 后台同步中...', 'syncing-background');
+
+                    // 尝试后台同步
+                    await syncData(0, true);
+                    
+                    // 同步成功，清空队列并清理过期操作
+                    this.localCache.clearPendingOperations();
+                    this.localCache.markSynced();
+                    this.cleanupExpiredOperations();
+                    
+                    updateStatus('☁️ 同步完成', 'connected');
+                    
+                    logger.info('同步队列处理完成', { 
+                        processedCount: operations.length,
+                        operation: '队列同步完成'
+                    });
+
+                } catch (error) {
+                    logger.error('同步队列处理失败', { 
+                        error: error.message,
+                        operation: '队列同步失败'
+                    });
+                    
+                    updateStatus('⚠️ 同步失败，将重试', 'sync-failed');
+                    
+                    // 设置重试
+                    setTimeout(() => {
+                        this.retryFailedSync();
+                    }, this.retryDelay);
+                    
+                } finally {
+                    this.isProcessing = false;
+                }
+            }
+
+            async retryFailedSync() {
+                const operations = this.localCache.getPendingOperations();
+                if (operations.length > 0) {
+                    logger.info('重试失败的同步操作', { 
+                        operationsCount: operations.length,
+                        operation: '同步重试'
+                    });
+                    await this.processQueue();
+                }
+            }
+
+            cleanupExpiredOperations() {
+                try {
+                    const operations = this.localCache.getPendingOperations();
+                    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24小时前
+                    
+                    const validOperations = operations.filter(op => {
+                        try {
+                            const opTime = new Date(op.timestamp);
+                            return opTime > oneDayAgo;
+                        } catch (e) {
+                            // 时间戳解析失败，保留操作（安全起见）
+                            return true;
+                        }
+                    });
+                    
+                    const removedCount = operations.length - validOperations.length;
+                    if (removedCount > 0) {
+                        localStorage.setItem('beestorePendingOps', JSON.stringify(validOperations));
+                        logger.info('清理过期的待同步操作', {
+                            removedCount: removedCount,
+                            remainingCount: validOperations.length,
+                            operation: '操作队列清理'
+                        });
+                    }
+                } catch (error) {
+                    logger.error('清理过期操作失败', { 
+                        error: error.message,
+                        operation: '操作队列清理失败'
+                    });
+                }
+            }
+        }
+
+        const localCache = new LocalCache();
+        const syncQueue = new SyncQueue(localCache);
+
+        // 界面初始化函数
+        function initializeInterface() {
+            // 确保数据结构兼容性（为旧数据添加新字段）
+            if (cloudData.apps) {
+                cloudData.apps.forEach(app => {
+                    if (!app.likes) app.likes = [];
+                    if (!app.favorites) app.favorites = [];
+                    if (!app.comments) app.comments = [];
+                });
+            }
+            
+            // 检查本地登录状态
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                try {
+                    const userData = JSON.parse(storedUser);
+                    // 验证用户是否仍然存在
+                    let user = cloudData.users.find(u => u.id === userData.id);
+                    
+                    if (user) {
+                        // 用户状态完整性验证
+                        if (!user.id || !user.username || !user.email) {
+                            logger.warn('检测到用户状态不完整，清除本地登录状态', {
+                                userId: user.id,
+                                username: user.username,
+                                hasEmail: !!user.email,
+                                operation: '用户状态完整性检查'
+                            });
+                            localStorage.removeItem('currentUser');
+                            showGuestNav();
+                        } else {
+                            currentUser = user;
+                            showUserNav();
+                        }
+                    } else {
+                        showGuestNav();
+                    }
+                } catch (error) {
+                    logger.error('解析本地用户数据失败', { error: error.message });
+                    localStorage.removeItem('currentUser');
+                    showGuestNav();
+                }
+            } else {
+                showGuestNav();
+            }
+
+            // 加载应用和更新统计
+            loadApps();
+            updateStats();
+            
+            // 设置搜索事件
+            setupSearchEvents();
+            
+            // 初始化自定义下拉菜单状态
+            initDropdowns();
+        }
+
         // 数据合并函数
         function mergeCloudData(remoteData) {
             logger.info('开始合并云端和本地数据', { 
@@ -2490,87 +2878,51 @@
                 operation: '应用启动'
             });
             
-            updateStatus('☁️ 正在同步数据...', 'syncing');
+            // 优先从本地缓存加载，快速启动
+            const cachedData = localCache.loadFromLocal();
+            if (cachedData) {
+                cloudData = cachedData;
+                updateStatus('📱 从本地缓存加载', 'connected');
+                logger.info('使用本地缓存数据快速启动', { 
+                    localUsers: cloudData.users?.length || 0,
+                    localApps: cloudData.apps?.length || 0,
+                    operation: '本地缓存启动'
+                });
+                
+                // 立即显示界面
+                initializeInterface();
+            } else {
+                updateStatus('☁️ 正在同步数据...', 'syncing');
+            }
             
             try {
-                // 从云端加载数据并合并
-                cloudData = await mergeCloudData(await cloudStorage.loadData());
+                // 后台异步从云端加载数据并合并
+                updateStatus('🔄 后台同步中...', 'syncing-background');
+                const remoteData = await cloudStorage.loadData();
                 
-                // 确保数据结构兼容性（为旧数据添加新字段）
-                if (cloudData.apps) {
-                    cloudData.apps.forEach(app => {
-                        if (!app.likes) app.likes = [];
-                        if (!app.favorites) app.favorites = [];
-                        if (!app.comments) app.comments = [];
-                    });
+                if (cachedData) {
+                    // 智能合并本地和远程数据
+                    cloudData = mergeCloudData(remoteData);
+                } else {
+                    // 首次加载，直接使用远程数据
+                    cloudData = await mergeCloudData(remoteData);
                 }
+                
+                // 保存合并后的数据到本地缓存
+                localCache.saveToLocal(cloudData);
                 
                 updateStatus('☁️ 数据同步成功', 'connected');
                 
-                // 检查本地登录状态
-                const storedUser = localStorage.getItem('currentUser');
-                if (storedUser) {
-                    const userData = JSON.parse(storedUser);
-                    // 验证用户是否仍然存在
-                    let user = cloudData.users.find(u => u.id === userData.id);
-                    
-                    if (user) {
-                        currentUser = user;
-                        showUserNav();
-                    } else {
-                        // 用户在云端不存在，可能是数据同步问题
-                        console.warn('本地用户在云端不存在，尝试恢复用户数据:', userData.username);
-                        
-                        // 检查是否是用户名重复（可能是ID冲突）
-                        const existingUserByName = cloudData.users.find(u => u.username === userData.username);
-                        if (existingUserByName) {
-                            // 用户名存在但ID不同，使用云端用户数据
-                            currentUser = existingUserByName;
-                            localStorage.setItem('currentUser', JSON.stringify(existingUserByName));
-                            showUserNav();
-                            alert('检测到用户数据同步问题，已自动修复登录状态');
-                        } else {
-                            // 尝试恢复用户到云端数据库
-                            const confirmRestore = confirm(
-                                `检测到您的用户数据可能因同步问题丢失。\n` +
-                                `用户名: ${userData.username}\n` +
-                                `是否尝试恢复用户数据？\n\n` +
-                                `点击"确定"恢复，点击"取消"重新注册`
-                            );
-                            
-                            if (confirmRestore) {
-                                // 恢复用户数据到云端
-                                cloudData.users.push(userData);
-                                currentUser = userData;
-                                showUserNav();
-                                
-                                // 立即同步到云端
-                                syncData().then(() => {
-                                    alert('用户数据已恢复并同步到云端');
-                                }).catch(error => {
-                                    console.error('恢复用户数据失败:', error);
-                                    alert('用户数据恢复失败，请重新注册');
-                                    localStorage.removeItem('currentUser');
-                                    showGuestNav();
-                                });
-                            } else {
-                                localStorage.removeItem('currentUser');
-                                showGuestNav();
-                            }
-                        }
-                    }
+                // 如果之前没有本地缓存，现在初始化界面
+                if (!cachedData) {
+                    initializeInterface();
                 } else {
-                    showGuestNav();
+                    // 有本地缓存时，只更新界面
+                    loadApps();
+                    updateStats();
                 }
-
-                // 加载应用
-                loadApps();
-                updateStats();
                 
-                // 设置搜索事件
-                setupSearchEvents();
-                
-                // 初始化自定义下拉菜单状态
+                // 处理待同步的操作
                 updateDropdownSelection('category', '');
                 updateDropdownSelection('sort', 'newest');
                 updateDropdownSelection('category-mobile', '');
@@ -2596,6 +2948,22 @@
                     console.log('提示：如果是首次访问或环境变量未配置，这是正常现象。数据将使用本地存储。');
                 }, 2000);
             }
+            
+            // 添加页面刷新保护
+            setupPageRefreshProtection();
+        }
+
+        // 页面刷新保护
+        function setupPageRefreshProtection() {
+            window.addEventListener('beforeunload', (event) => {
+                const pendingOps = localCache.getPendingOperations();
+                if (pendingOps.length > 0) {
+                    const message = `您有 ${pendingOps.length} 个操作正在同步到云端，刷新可能导致数据丢失。确定要离开吗？`;
+                    event.preventDefault();
+                    event.returnValue = message;
+                    return message;
+                }
+            });
         }
 
         // 初始化本地数据
@@ -2645,26 +3013,60 @@
         }
 
         // 同步数据到云端
-        async function syncData(retryCount = 0) {
+        async function syncData(retryCount = 0, isBackground = false) {
             const maxRetries = 3;
             
             if (retryCount === 0) {
                 logger.info('开始数据同步到云端', { 
                     usersCount: cloudData.users.length,
                     appsCount: cloudData.apps.length,
+                    isBackground: isBackground,
                     operation: '数据同步'
                 });
-                updateStatus('☁️ 正在同步...', 'syncing');
+                
+                if (isBackground) {
+                    updateStatus('🔄 后台同步中...', 'syncing-background');
+                } else {
+                    updateStatus('☁️ 正在同步...', 'syncing');
+                }
             } else {
                 logger.warn(`数据同步重试 ${retryCount}/${maxRetries}`, { 
                     retryCount: retryCount,
                     maxRetries: maxRetries,
+                    isBackground: isBackground,
                     operation: '数据同步重试'
                 });
-                updateStatus(`☁️ 重试同步 (${retryCount}/${maxRetries})...`, 'syncing');
+                
+                if (isBackground) {
+                    updateStatus(`🔄 后台重试 (${retryCount}/${maxRetries})...`, 'syncing-background');
+                } else {
+                    updateStatus(`☁️ 重试同步 (${retryCount}/${maxRetries})...`, 'syncing');
+                }
             }
             
             try {
+                // 用户数据一致性检查
+                if (currentUser) {
+                    const userInData = cloudData.users.find(u => u.id === currentUser.id);
+                    if (!userInData) {
+                        logger.warn('同步时发现用户数据不一致，添加当前用户到cloudData', {
+                            currentUserId: currentUser.id,
+                            currentUserName: currentUser.username,
+                            operation: '用户数据一致性修复'
+                        });
+                        cloudData.users.push(currentUser);
+                    } else if (userInData.username !== currentUser.username) {
+                        logger.warn('同步时发现用户名不一致，更新cloudData中的用户信息', {
+                            currentUserId: currentUser.id,
+                            cloudUsername: userInData.username,
+                            currentUsername: currentUser.username,
+                            operation: '用户数据一致性修复'
+                        });
+                        userInData.username = currentUser.username;
+                        userInData.email = currentUser.email;
+                    }
+                }
+                
                 cloudData.lastSync = new Date().toISOString();
                 
                 // 检查数据大小
@@ -2711,9 +3113,15 @@
                     usersCount: cloudData.users.length,
                     appsCount: cloudData.apps.length,
                     retryCount: retryCount,
+                    isBackground: isBackground,
                     operation: '数据同步成功'
                 });
-                updateStatus('☁️ 同步成功', 'connected');
+                
+                if (isBackground) {
+                    updateStatus('✅ 后台同步完成', 'connected');
+                } else {
+                    updateStatus('☁️ 同步成功', 'connected');
+                }
                 updateStats();
                 return true;
             } catch (error) {
@@ -2729,9 +3137,13 @@
                     // 指数退避重试：第一次1秒，第二次2秒，第三次4秒
                     const delay = Math.pow(2, retryCount) * 1000;
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    return await syncData(retryCount + 1);
+                    return await syncData(retryCount + 1, isBackground);
                 } else {
-                    updateStatus('❌ 同步失败', 'error');
+                    if (isBackground) {
+                        updateStatus('⚠️ 后台同步失败', 'sync-failed');
+                    } else {
+                        updateStatus('❌ 同步失败', 'error');
+                    }
                     throw error;
                 }
             }
@@ -3143,6 +3555,13 @@
                 return;
             }
 
+            // 验证用户状态完整性
+            if (!currentUser.id || !currentUser.username) {
+                alert('用户状态异常，请重新登录');
+                logout();
+                return;
+            }
+
             const myApps = cloudData.apps.filter(app => app.authorId === currentUser.id);
             displayApps(myApps, true);
         }
@@ -3151,6 +3570,13 @@
         function showMyFavorites() {
             if (!currentUser) {
                 alert('请先登录');
+                return;
+            }
+
+            // 验证用户状态完整性
+            if (!currentUser.id || !currentUser.username) {
+                alert('用户状态异常，请重新登录');
+                logout();
                 return;
             }
 
@@ -3164,6 +3590,21 @@
         async function toggleLike(appId) {
             if (!currentUser) {
                 alert('请先登录');
+                return;
+            }
+
+            // 验证用户状态完整性
+            if (!currentUser.id || !currentUser.username) {
+                alert('用户状态异常，请重新登录');
+                logout();
+                return;
+            }
+
+            // 验证用户在云端数据中的存在性
+            const userExists = cloudData.users.find(u => u.id === currentUser.id);
+            if (!userExists) {
+                alert('用户数据同步异常，请重新登录');
+                logout();
                 return;
             }
 
@@ -3191,8 +3632,24 @@
                     operation: '用户互动'
                 });
 
-                await syncData();
-                loadApps(); // 重新加载以更新UI
+                // 本地优先策略：立即更新UI和本地缓存
+                localCache.saveToLocal(cloudData);
+                loadApps(); // 立即更新UI，用户看到即时效果
+                
+                // 添加到异步同步队列
+                await syncQueue.addOperation({
+                    type: 'like',
+                    appId: appId,
+                    userId: currentUser.id,
+                    action: isLiking ? '点赞' : '取消点赞',
+                    data: {
+                        appName: app.name,
+                        authorId: app.authorId
+                    }
+                });
+
+                // 显示操作完成状态
+                updateStatus('✅ 点赞已更新', 'connected');
             } catch (error) {
                 logger.error('点赞操作失败', {
                     appId: appId,
@@ -3207,6 +3664,21 @@
         async function toggleFavorite(appId) {
             if (!currentUser) {
                 alert('请先登录');
+                return;
+            }
+
+            // 验证用户状态完整性
+            if (!currentUser.id || !currentUser.username) {
+                alert('用户状态异常，请重新登录');
+                logout();
+                return;
+            }
+
+            // 验证用户在云端数据中的存在性
+            const userExists = cloudData.users.find(u => u.id === currentUser.id);
+            if (!userExists) {
+                alert('用户数据同步异常，请重新登录');
+                logout();
                 return;
             }
 
@@ -3234,8 +3706,24 @@
                     operation: '用户互动'
                 });
 
-                await syncData();
-                loadApps(); // 重新加载以更新UI
+                // 本地优先策略：立即更新UI和本地缓存
+                localCache.saveToLocal(cloudData);
+                loadApps(); // 立即更新UI，用户看到即时效果
+                
+                // 添加到异步同步队列
+                await syncQueue.addOperation({
+                    type: 'favorite',
+                    appId: appId,
+                    userId: currentUser.id,
+                    action: isFavoriting ? '收藏' : '取消收藏',
+                    data: {
+                        appName: app.name,
+                        authorId: app.authorId
+                    }
+                });
+
+                // 显示操作完成状态
+                updateStatus('✅ 收藏已更新', 'connected');
             } catch (error) {
                 logger.error('收藏操作失败', {
                     appId: appId,
@@ -3260,6 +3748,21 @@
         async function addComment(appId) {
             if (!currentUser) {
                 alert('请先登录');
+                return;
+            }
+
+            // 验证用户状态完整性
+            if (!currentUser.id || !currentUser.username) {
+                alert('用户状态异常，请重新登录');
+                logout();
+                return;
+            }
+
+            // 验证用户在云端数据中的存在性
+            const userExists = cloudData.users.find(u => u.id === currentUser.id);
+            if (!userExists) {
+                alert('用户数据同步异常，请重新登录');
+                logout();
                 return;
             }
 
@@ -3298,8 +3801,26 @@
                     operation: '用户互动'
                 });
 
-                await syncData();
-                loadApps(); // 重新加载以更新UI
+                // 本地优先策略：立即更新UI和本地缓存
+                localCache.saveToLocal(cloudData);
+                loadApps(); // 立即更新UI，用户看到即时效果
+                
+                // 添加到异步同步队列
+                await syncQueue.addOperation({
+                    type: 'comment_add',
+                    appId: appId,
+                    userId: currentUser.id,
+                    commentId: newComment.id,
+                    action: '添加评论',
+                    data: {
+                        appName: app.name,
+                        commentContent: content.substring(0, 50) + (content.length > 50 ? '...' : ''),
+                        authorId: app.authorId
+                    }
+                });
+
+                // 显示操作完成状态
+                updateStatus('✅ 评论已添加', 'connected');
             } catch (error) {
                 logger.error('添加评论失败', {
                     appId: appId,
@@ -3314,6 +3835,21 @@
         async function deleteComment(appId, commentId) {
             if (!currentUser) {
                 alert('请先登录');
+                return;
+            }
+
+            // 验证用户状态完整性
+            if (!currentUser.id || !currentUser.username) {
+                alert('用户状态异常，请重新登录');
+                logout();
+                return;
+            }
+
+            // 验证用户在云端数据中的存在性
+            const userExists = cloudData.users.find(u => u.id === currentUser.id);
+            if (!userExists) {
+                alert('用户数据同步异常，请重新登录');
+                logout();
                 return;
             }
 
@@ -3341,8 +3877,26 @@
                     operation: '用户互动'
                 });
 
-                await syncData();
-                loadApps(); // 重新加载以更新UI
+                // 本地优先策略：立即更新UI和本地缓存
+                localCache.saveToLocal(cloudData);
+                loadApps(); // 立即更新UI，用户看到即时效果
+                
+                // 添加到异步同步队列
+                await syncQueue.addOperation({
+                    type: 'comment_delete',
+                    appId: appId,
+                    userId: currentUser.id,
+                    commentId: commentId,
+                    action: '删除评论',
+                    data: {
+                        appName: app.name,
+                        deletedContent: comment.content.substring(0, 50) + (comment.content.length > 50 ? '...' : ''),
+                        authorId: app.authorId
+                    }
+                });
+
+                // 显示操作完成状态
+                updateStatus('✅ 评论已删除', 'connected');
             } catch (error) {
                 logger.error('删除评论失败', {
                     appId: appId,
@@ -3687,28 +4241,25 @@
                 showUserNav();
                 closeModal('register-modal');
                 updateStats();
+                loadApps(); // 重新渲染应用列表以更新按钮状态
 
-                // 尝试同步到云端，但不阻塞用户体验
-                updateStatus('☁️ 正在保存用户数据...', 'syncing');
+                // 本地优先策略：立即保存到本地缓存
+                localCache.saveToLocal(cloudData);
                 
-                try {
-                    await syncData();
-                    alert('注册成功！用户数据已同步到云端');
-                } catch (syncError) {
-                    console.error('用户数据同步失败:', syncError);
-                    alert('注册成功！但数据同步失败，数据已保存到本地。请检查网络连接。');
-                    updateStatus('⚠️ 数据仅保存在本地', 'error');
-                    
-                    // 设置定时重试同步
-                    setTimeout(async () => {
-                        try {
-                            await syncData();
-                            updateStatus('☁️ 数据同步成功', 'connected');
-                        } catch (retryError) {
-                            console.error('重试同步失败:', retryError);
-                        }
-                    }, 5000); // 5秒后重试
-                }
+                // 添加到异步同步队列
+                await syncQueue.addOperation({
+                    type: 'user_register',
+                    userId: newUser.id,
+                    action: '用户注册',
+                    data: {
+                        username: newUser.username,
+                        email: newUser.email
+                    }
+                });
+                
+                // 显示注册成功状态
+                updateStatus('✅ 注册成功', 'connected');
+                alert('注册成功！');
 
             } catch (error) {
                 // 移除已添加的用户数据（如果添加失败）
@@ -3829,32 +4380,29 @@
                     cloudData.apps.push(newApp);
                 }
 
-                // 先更新UI，确保用户能立即看到变化
+                // 本地优先策略：立即更新UI和本地缓存
+                localCache.saveToLocal(cloudData);
                 closeModal('publish-modal');
                 updateStats();
                 loadApps();
 
-                // 然后同步到云端
-                updateStatus('☁️ 正在保存数据...', 'syncing');
-                
-                try {
-                    await syncData();
-                    alert(currentEditingAppId ? '应用更新成功！数据已同步到云端' : '应用发布成功！数据已同步到云端');
-                } catch (syncError) {
-                    console.error('数据同步失败:', syncError);
-                    alert((currentEditingAppId ? '应用已更新' : '应用已发布') + '，但数据同步失败。数据已保存到本地，请检查网络连接。');
-                    updateStatus('⚠️ 数据仅保存在本地', 'error');
-                    
-                    // 设置定时重试同步
-                    setTimeout(async () => {
-                        try {
-                            await syncData();
-                            updateStatus('☁️ 数据同步成功', 'connected');
-                        } catch (retryError) {
-                            console.error('重试同步失败:', retryError);
-                        }
-                    }, 5000);
-                }
+                // 添加到异步同步队列
+                await syncQueue.addOperation({
+                    type: currentEditingAppId ? 'app_edit' : 'app_publish',
+                    appId: currentEditingAppId || Date.now(),
+                    userId: currentUser.id,
+                    action: currentEditingAppId ? '编辑应用' : '发布应用',
+                    data: {
+                        appName: name,
+                        appUrl: url,
+                        category: category,
+                        hasScreenshot: !!screenshot
+                    }
+                });
+
+                // 显示操作完成状态
+                updateStatus(currentEditingAppId ? '✅ 应用已更新' : '✅ 应用已发布', 'connected');
+                alert(currentEditingAppId ? '应用更新成功！' : '应用发布成功！');
 
             } catch (error) {
                 alert('操作失败: ' + error.message);
@@ -4900,6 +5448,23 @@
         setInterval(() => {
             logger.cleanupCloudLogs().catch(e => console.warn('定期清理失败:', e));
         }, 12 * 60 * 60 * 1000);
+
+        // 启动定期后台同步机制（每2分钟检查一次待同步操作）
+        setInterval(() => {
+            const pendingOps = localCache.getPendingOperations();
+            if (pendingOps.length > 0) {
+                logger.info('定期检查：发现待同步操作', { 
+                    operationsCount: pendingOps.length,
+                    operation: '定期同步检查'
+                });
+                syncQueue.retryFailedSync().catch(e => console.warn('定期同步失败:', e));
+            }
+        }, 2 * 60 * 1000); // 每2分钟检查一次
+
+        // 启动定期操作队列清理机制（每小时清理一次过期操作）
+        setInterval(() => {
+            syncQueue.cleanupExpiredOperations();
+        }, 60 * 60 * 1000); // 每小时清理一次
 
         // 应用启动时执行一次清理
         setTimeout(() => {
