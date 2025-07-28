@@ -2440,6 +2440,24 @@
                 }
             }
 
+            isCacheFresh() {
+                try {
+                    const cached = localStorage.getItem(this.cacheKey);
+                    if (!cached) return false;
+                    
+                    const cacheData = JSON.parse(cached);
+                    const cacheTime = new Date(cacheData.lastModified);
+                    const now = new Date();
+                    
+                    // 缓存5分钟内认为是新鲜的
+                    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+                    
+                    return cacheTime > fiveMinutesAgo;
+                } catch (error) {
+                    return false;
+                }
+            }
+
             isLocalNewer(localTime, remoteTime) {
                 if (!localTime || !remoteTime) return false;
                 return new Date(localTime) > new Date(remoteTime);
@@ -2853,49 +2871,58 @@
                 operation: '应用启动'
             });
             
-            // 优先从本地缓存加载，快速启动
+            // 检查本地缓存是否新鲜
             const cachedData = localCache.loadFromLocal();
-            if (cachedData) {
+            const isCacheFresh = localCache.isCacheFresh();
+            
+            let useQuickStart = false;
+            
+            if (cachedData && isCacheFresh) {
+                // 缓存新鲜，快速启动
                 cloudData = cachedData;
-                updateStatus('📱 从本地缓存加载', 'connected');
-                logger.info('使用本地缓存数据快速启动', { 
+                updateStatus('📱 使用新鲜缓存', 'connected');
+                logger.info('使用新鲜缓存数据快速启动', { 
                     localUsers: cloudData.users?.length || 0,
                     localApps: cloudData.apps?.length || 0,
-                    operation: '本地缓存启动'
+                    cacheAge: '5分钟内',
+                    operation: '新鲜缓存启动'
                 });
                 
                 // 立即显示界面
                 initializeInterface();
+                useQuickStart = true;
             } else {
+                // 缓存不新鲜或不存在，优先加载云端数据
                 updateStatus('☁️ 正在同步数据...', 'syncing');
+                logger.info('缓存过期或不存在，优先加载云端数据', { 
+                    hasCachedData: !!cachedData,
+                    isCacheFresh: isCacheFresh,
+                    operation: '云端优先启动'
+                });
             }
             
             try {
-                // 后台异步从云端加载数据并合并
-                updateStatus('🔄 后台同步中...', 'syncing-background');
+                // 从云端加载数据
                 const remoteData = await cloudStorage.loadData();
                 
-                if (cachedData) {
-                    // 智能合并本地和远程数据
+                if (useQuickStart) {
+                    // 已经快速启动，后台更新数据
+                    updateStatus('🔄 后台更新中...', 'syncing-background');
                     cloudData = mergeCloudData(remoteData);
+                    
+                    // 静默更新界面（如果有数据变化）
+                    loadApps();
+                    updateStats();
                 } else {
-                    // 首次加载，直接使用远程数据
+                    // 首次加载或缓存过期，直接使用云端数据
                     cloudData = await mergeCloudData(remoteData);
+                    initializeInterface();
                 }
                 
                 // 保存合并后的数据到本地缓存
                 localCache.saveToLocal(cloudData);
                 
                 updateStatus('☁️ 数据同步成功', 'connected');
-                
-                // 如果之前没有本地缓存，现在初始化界面
-                if (!cachedData) {
-                    initializeInterface();
-                } else {
-                    // 有本地缓存时，只更新界面
-                    loadApps();
-                    updateStats();
-                }
                 
                 // 处理待同步的操作
                 updateDropdownSelection('category', '');
@@ -2904,13 +2931,42 @@
                 updateDropdownSelection('sort-mobile', 'newest');
                 
             } catch (error) {
-                console.error('初始化失败:', error);
-                updateStatus('❌ 云端连接失败，使用本地数据', 'error');
-                // 使用本地数据或示例数据
-                initLocalData();
-                showGuestNav();
-                loadApps();
-                updateStats();
+                console.error('云端数据加载失败:', error);
+                
+                if (!useQuickStart) {
+                    // 没有快速启动，需要处理降级
+                    if (cachedData) {
+                        // 有缓存数据，使用缓存作为降级
+                        cloudData = cachedData;
+                        updateStatus('📱 网络异常，使用本地缓存', 'error');
+                        logger.warn('云端加载失败，降级使用本地缓存', { 
+                            localUsers: cloudData.users?.length || 0,
+                            localApps: cloudData.apps?.length || 0,
+                            error: error.message,
+                            operation: '降级到缓存'
+                        });
+                        initializeInterface();
+                    } else {
+                        // 无缓存数据，使用示例数据
+                        updateStatus('❌ 云端连接失败，使用示例数据', 'error');
+                        initLocalData();
+                        showGuestNav();
+                        loadApps();
+                        updateStats();
+                        
+                        logger.error('首次访问且云端加载失败，使用示例数据', { 
+                            error: error.message,
+                            operation: '降级到示例数据'
+                        });
+                    }
+                } else {
+                    // 已经快速启动，后台同步失败不影响用户
+                    updateStatus('⚠️ 后台同步失败', 'sync-failed');
+                    logger.warn('快速启动后后台同步失败', { 
+                        error: error.message,
+                        operation: '后台同步失败'
+                    });
+                }
                 
                 // 初始化自定义下拉菜单状态
                 updateDropdownSelection('category', '');
@@ -2918,10 +2974,12 @@
                 updateDropdownSelection('category-mobile', '');
                 updateDropdownSelection('sort-mobile', 'newest');
                 
-                // 提示用户检查网络连接
-                setTimeout(() => {
-                    console.log('提示：如果是首次访问或环境变量未配置，这是正常现象。数据将使用本地存储。');
-                }, 2000);
+                // 提示用户检查网络连接（仅在首次访问失败时）
+                if (!useQuickStart && !cachedData) {
+                    setTimeout(() => {
+                        console.log('提示：如果是首次访问或环境变量未配置，这是正常现象。数据将使用本地存储。');
+                    }, 2000);
+                }
             }
             
             // 添加页面刷新保护
