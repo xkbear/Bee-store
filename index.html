@@ -1252,6 +1252,7 @@
                             <span id="user-name"></span>
                         </div>
                         <button class="btn btn-secondary" onclick="goHome()">首页</button>
+                        <button class="btn btn-secondary" onclick="forceRefreshData()" style="color: #17a2b8;">🔄 刷新</button>
                         <button class="btn btn-secondary" onclick="showMyApps()">我的应用</button>
                         <button class="btn btn-secondary" onclick="showMyFavorites()">我的收藏</button>
                         <button class="btn btn-secondary" onclick="showLogViewer()" style="display: none;" id="log-viewer-btn">📋 查看日志</button>
@@ -1443,6 +1444,9 @@
                 <button class="mobile-nav-item" onclick="goHome(); closeMobileMenu();">
                     🏠 首页
                 </button>
+                <button class="mobile-nav-item" onclick="forceRefreshData(); closeMobileMenu();" style="color: #17a2b8;">
+                    🔄 刷新数据
+                </button>
                 <button class="mobile-nav-item" onclick="showPublishModal(); closeMobileMenu();" style="background: linear-gradient(45deg, #ff9500, #ff6600); color: white; border-color: #ff9500;">
                     ➕ 发布作品
                 </button>
@@ -1457,6 +1461,9 @@
                 </button>
                 <button class="mobile-nav-item" onclick="showSnapshotViewer(); closeMobileMenu();" style="display: none;" id="mobile-snapshot-viewer-btn">
                     📸 数据快照
+                </button>
+                <button class="mobile-nav-item" onclick="showDataStatus(); closeMobileMenu();" style="color: #6c757d; font-size: 0.9rem;">
+                    🔍 数据状态
                 </button>
                 <button class="mobile-nav-item" onclick="logout(); closeMobileMenu();">
                     🚪 退出登录
@@ -2449,11 +2456,24 @@
                     const cacheTime = new Date(cacheData.lastModified);
                     const now = new Date();
                     
-                    // 缓存5分钟内认为是新鲜的
-                    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+                    // 移动端缓存时间稍长一些（10分钟），因为移动端网络不稳定
+                    const isMobile = navigator.userAgent.includes('Mobile');
+                    const cacheValidTime = isMobile ? 10 * 60 * 1000 : 5 * 60 * 1000; // 移动端10分钟，桌面端5分钟
+                    const validTimeAgo = new Date(now.getTime() - cacheValidTime);
                     
-                    return cacheTime > fiveMinutesAgo;
+                    const isFresh = cacheTime > validTimeAgo;
+                    
+                    console.log('[Debug] 缓存检查:', {
+                        isMobile: isMobile,
+                        cacheTime: cacheTime.toISOString(),
+                        validTimeAgo: validTimeAgo.toISOString(),
+                        isFresh: isFresh,
+                        cacheValidMinutes: cacheValidTime / 60000
+                    });
+                    
+                    return isFresh;
                 } catch (error) {
+                    console.error('[Debug] 缓存检查失败:', error);
                     return false;
                 }
             }
@@ -2897,8 +2917,17 @@
                 logger.info('缓存过期或不存在，优先加载云端数据', { 
                     hasCachedData: !!cachedData,
                     isCacheFresh: isCacheFresh,
+                    isMobile: navigator.userAgent.includes('Mobile'),
                     operation: '云端优先启动'
                 });
+                
+                // 移动端如果有缓存，先显示缓存内容，避免白屏等待
+                if (cachedData && navigator.userAgent.includes('Mobile')) {
+                    console.log('[Debug] 移动端使用过期缓存作为临时显示');
+                    cloudData = cachedData;
+                    initializeInterface();
+                    useQuickStart = true; // 标记为快速启动，后续云端数据加载后静默更新
+                }
             }
             
             try {
@@ -2933,36 +2962,41 @@
             } catch (error) {
                 console.error('云端数据加载失败:', error);
                 
+                const isMobile = navigator.userAgent.includes('Mobile');
+                
                 if (!useQuickStart) {
                     // 没有快速启动，需要处理降级
                     if (cachedData) {
                         // 有缓存数据，使用缓存作为降级
                         cloudData = cachedData;
-                        updateStatus('📱 网络异常，使用本地缓存', 'error');
+                        updateStatus(isMobile ? '📱 移动网络不稳定，使用本地数据' : '📱 网络异常，使用本地缓存', 'error');
                         logger.warn('云端加载失败，降级使用本地缓存', { 
                             localUsers: cloudData.users?.length || 0,
                             localApps: cloudData.apps?.length || 0,
+                            isMobile: isMobile,
                             error: error.message,
                             operation: '降级到缓存'
                         });
                         initializeInterface();
                     } else {
                         // 无缓存数据，使用示例数据
-                        updateStatus('❌ 云端连接失败，使用示例数据', 'error');
+                        updateStatus(isMobile ? '📱 首次访问失败，使用示例数据' : '❌ 云端连接失败，使用示例数据', 'error');
                         initLocalData();
                         showGuestNav();
                         loadApps();
                         updateStats();
                         
                         logger.error('首次访问且云端加载失败，使用示例数据', { 
+                            isMobile: isMobile,
                             error: error.message,
                             operation: '降级到示例数据'
                         });
                     }
                 } else {
                     // 已经快速启动，后台同步失败不影响用户
-                    updateStatus('⚠️ 后台同步失败', 'sync-failed');
+                    updateStatus(isMobile ? '📱 后台更新失败' : '⚠️ 后台同步失败', 'sync-failed');
                     logger.warn('快速启动后后台同步失败', { 
+                        isMobile: isMobile,
                         error: error.message,
                         operation: '后台同步失败'
                     });
@@ -4197,6 +4231,43 @@
                 return;
             }
 
+            // 调试信息：检查数据状态
+            console.log('[Debug] 登录尝试:', { 
+                username: username, 
+                totalUsers: cloudData?.users?.length || 0,
+                userAgent: navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'
+            });
+
+            // 确保cloudData已初始化
+            if (!cloudData || !cloudData.users || cloudData.users.length === 0) {
+                logger.warn('登录时发现cloudData未初始化，尝试重新加载', {
+                    username: username,
+                    cloudDataExists: !!cloudData,
+                    usersExists: !!(cloudData?.users),
+                    operation: '登录数据检查'
+                });
+                
+                // 尝试重新加载数据
+                try {
+                    updateStatus('🔄 正在加载用户数据...', 'syncing');
+                    const remoteData = await cloudStorage.loadData();
+                    if (remoteData && remoteData.users) {
+                        cloudData = remoteData;
+                        logger.info('重新加载数据成功', { 
+                            usersCount: cloudData.users.length,
+                            operation: '登录时数据重载'
+                        });
+                    }
+                } catch (error) {
+                    logger.error('重新加载数据失败', { 
+                        error: error.message,
+                        operation: '登录时数据重载失败'
+                    });
+                    alert('数据加载失败，请刷新页面重试');
+                    return;
+                }
+            }
+
             const user = cloudData.users.find(u => u.username === username && u.password === password);
             
             if (user) {
@@ -4204,8 +4275,24 @@
                 localStorage.setItem('currentUser', JSON.stringify(user));
                 showUserNav();
                 closeModal('login-modal');
+                
+                logger.info('用户登录成功', {
+                    userId: user.id,
+                    username: user.username,
+                    isMobile: navigator.userAgent.includes('Mobile'),
+                    operation: '用户登录'
+                });
+                
                 alert('登录成功！');
+                
+                // 登录成功后刷新应用列表，确保显示最新数据
+                loadApps();
             } else {
+                logger.warn('登录失败', {
+                    username: username,
+                    availableUsers: cloudData.users.map(u => u.username),
+                    operation: '登录失败'
+                });
                 alert('用户名或密码错误');
             }
         }
@@ -4854,6 +4941,85 @@
         function goHome() {
             resetSearchConditions();
             loadApps();
+        }
+
+        // 强制刷新数据（用于解决移动端数据同步问题）
+        async function forceRefreshData() {
+            if (!confirm('确定要刷新数据吗？这将重新从云端加载最新数据。')) {
+                return;
+            }
+            
+            try {
+                updateStatus('🔄 正在强制刷新数据...', 'syncing');
+                
+                // 清除本地缓存
+                localCache.clearPendingOperations();
+                localStorage.removeItem('beestoreCloudData');
+                localStorage.removeItem('beestoreCloudMeta');
+                
+                // 重新加载云端数据
+                const remoteData = await cloudStorage.loadData();
+                if (remoteData) {
+                    cloudData = remoteData;
+                    localCache.saveToLocal(cloudData);
+                    
+                    // 重新初始化界面
+                    initializeInterface();
+                    
+                    logger.info('强制刷新数据成功', {
+                        usersCount: cloudData.users?.length || 0,
+                        appsCount: cloudData.apps?.length || 0,
+                        isMobile: navigator.userAgent.includes('Mobile'),
+                        operation: '强制刷新'
+                    });
+                    
+                    updateStatus('✅ 数据刷新成功', 'connected');
+                    alert(`数据刷新成功！\n用户: ${cloudData.users?.length || 0}个\n应用: ${cloudData.apps?.length || 0}个`);
+                } else {
+                    throw new Error('云端数据为空');
+                }
+            } catch (error) {
+                logger.error('强制刷新数据失败', {
+                    error: error.message,
+                    operation: '强制刷新失败'
+                });
+                updateStatus('❌ 数据刷新失败', 'error');
+                alert('数据刷新失败: ' + error.message + '\n\n请检查网络连接或稍后重试。');
+            }
+        }
+
+        // 显示当前数据状态（调试用）
+        function showDataStatus() {
+            const cachedData = localCache.loadFromLocal();
+            const isCacheFresh = localCache.isCacheFresh();
+            const pendingOps = localCache.getPendingOperations();
+            
+            const status = {
+                当前用户: currentUser ? `${currentUser.username} (ID: ${currentUser.id})` : '未登录',
+                云端数据: {
+                    用户数: cloudData?.users?.length || 0,
+                    应用数: cloudData?.apps?.length || 0,
+                    最后同步: cloudData?.lastSync || '未知'
+                },
+                本地缓存: {
+                    存在: !!cachedData,
+                    新鲜: isCacheFresh,
+                    用户数: cachedData?.users?.length || 0,
+                    应用数: cachedData?.apps?.length || 0
+                },
+                待同步操作: pendingOps.length,
+                设备信息: {
+                    移动端: navigator.userAgent.includes('Mobile'),
+                    用户代理: navigator.userAgent.split(' ').slice(-2).join(' ')
+                }
+            };
+            
+            console.log('[Debug] 数据状态:', status);
+            alert('数据状态已输出到控制台，请按F12查看详细信息。\n\n' + 
+                  `当前用户: ${status.当前用户}\n` +
+                  `云端数据: ${status.云端数据.用户数}个用户, ${status.云端数据.应用数}个应用\n` +
+                  `本地缓存: ${status.本地缓存.存在 ? '存在' : '不存在'} (${status.本地缓存.新鲜 ? '新鲜' : '过期'})\n` +
+                  `待同步: ${status.待同步操作}个操作`);
         }
 
         // 窗口大小改变时处理
