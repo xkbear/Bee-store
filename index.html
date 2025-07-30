@@ -71,13 +71,16 @@
         }
 
         .logo {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #ff9500;
             text-decoration: none;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        .logo img {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
         }
 
         .nav-buttons {
@@ -1260,8 +1263,7 @@
         <div class="container">
             <nav class="nav">
                 <a href="#" class="logo">
-                    <span>🐝</span>
-                    <span>Bee Store</span>
+                    <img src="logo.jpeg" alt="Bee Store Logo">
                 </a>
                 <div class="nav-buttons">
                     <div id="guest-nav" style="display: flex; gap: 1rem;">
