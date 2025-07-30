@@ -1282,8 +1282,8 @@
                         <button class="btn btn-secondary" onclick="goHome()">首页</button>
                         <button class="btn btn-secondary" onclick="showMyApps()">我的应用</button>
                         <button class="btn btn-secondary" onclick="showMyFavorites()">我的收藏</button>
-                        <button class="btn btn-secondary" onclick="showLogViewer()" style="display: none;" id="log-viewer-btn">📋 查看日志</button>
-                        <button class="btn btn-secondary" onclick="showSnapshotViewer()" style="display: none;" id="snapshot-viewer-btn">📸 数据快照</button>
+                        <button class="btn btn-secondary" onclick="showLogViewer()" style="display: none;" id="log-viewer-btn">查看日志</button>
+                        <button class="btn btn-secondary" onclick="showSnapshotViewer()" style="display: none;" id="snapshot-viewer-btn">数据快照</button>
                         <button class="btn btn-secondary" onclick="logout()">退出</button>
                     </div>
                 </div>
@@ -1326,13 +1326,13 @@
                         <!-- 排序下拉菜单 -->
                         <div class="custom-dropdown">
                             <button class="dropdown-trigger" id="sort-trigger" onclick="toggleDropdown('sort')" title="排序方式">
-                                📅
+                                🔄
                             </button>
                             <div class="dropdown-menu" id="sort-dropdown">
-                                <div class="dropdown-item selected" data-value="newest">📅 最新发布</div>
-                                <div class="dropdown-item" data-value="oldest">📅 最早发布</div>
-                                <div class="dropdown-item" data-value="name">🔤 按名称</div>
-                                <div class="dropdown-item" data-value="author">👤 按作者</div>
+                                <div class="dropdown-item selected" data-value="newest">最新发布</div>
+                                <div class="dropdown-item" data-value="oldest">最早发布</div>
+                                <div class="dropdown-item" data-value="name">按名称</div>
+                                <div class="dropdown-item" data-value="author">按作者</div>
                             </div>
                         </div>
                         
@@ -1379,7 +1379,10 @@
                         <!-- 移动端分类下拉菜单 -->
                         <div class="custom-dropdown">
                             <button class="dropdown-trigger" id="category-trigger-mobile" onclick="toggleDropdown('category-mobile')" title="分类筛选">
-                                🏷️
+                                <svg class="icon" viewBox="0 0 24 24">
+                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                                </svg>
                             </button>
                             <div class="dropdown-menu" id="category-dropdown-mobile">
                                 <div class="dropdown-item selected" data-value="">全部分类</div>
@@ -1397,10 +1400,10 @@
                                 📅
                             </button>
                             <div class="dropdown-menu" id="sort-dropdown-mobile">
-                                <div class="dropdown-item selected" data-value="newest">📅 最新发布</div>
-                                <div class="dropdown-item" data-value="oldest">📅 最早发布</div>
-                                <div class="dropdown-item" data-value="name">🔤 按名称</div>
-                                <div class="dropdown-item" data-value="author">👤 按作者</div>
+                                <div class="dropdown-item selected" data-value="newest">最新发布</div>
+                                <div class="dropdown-item" data-value="oldest">最早发布</div>
+                                <div class="dropdown-item" data-value="name">按名称</div>
+                                <div class="dropdown-item" data-value="author">按作者</div>
                             </div>
                         </div>
                         
@@ -1456,7 +1459,7 @@
                     👤 登录
                 </button>
                 <button class="mobile-nav-item" onclick="showRegister(); closeMobileMenu();">
-                    ✨ 注册
+                    ➕ 注册
                 </button>
             </div>
         </div>
@@ -1469,25 +1472,25 @@
             </div>
             <div class="mobile-nav-items">
                 <button class="mobile-nav-item" onclick="goHome(); closeMobileMenu();">
-                    🏠 首页
+                    首页
                 </button>
                 <button class="mobile-nav-item" onclick="showPublishModal(); closeMobileMenu();" style="background: linear-gradient(45deg, #ff9500, #ff6600); color: white; border-color: #ff9500;">
-                    ➕ 发布作品
+                    发布作品
                 </button>
                 <button class="mobile-nav-item" onclick="showMyApps(); closeMobileMenu();">
-                    📱 我的应用
+                    我的应用
                 </button>
                 <button class="mobile-nav-item" onclick="showMyFavorites(); closeMobileMenu();">
-                    ⭐ 我的收藏
+                    我的收藏
                 </button>
                 <button class="mobile-nav-item" onclick="showLogViewer(); closeMobileMenu();" style="display: none;" id="mobile-log-viewer-btn">
-                    📋 查看日志
+                    查看日志
                 </button>
                 <button class="mobile-nav-item" onclick="showSnapshotViewer(); closeMobileMenu();" style="display: none;" id="mobile-snapshot-viewer-btn">
-                    📸 数据快照
+                    数据快照
                 </button>
                 <button class="mobile-nav-item" onclick="logout(); closeMobileMenu();">
-                    🚪 退出登录
+                    退出登录
                 </button>
             </div>
         </div>
@@ -1549,10 +1552,10 @@
                         <div id="screenshot-api-section" style="display: block;">
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                 <button type="button" class="btn btn-secondary" onclick="generateScreenshot()">
-                                    🌐 生成网页截图
+                                    生成网页截图
                                 </button>
                                 <button type="button" class="btn btn-secondary" onclick="clearScreenshot()" style="background: #dc3545; color: white;">
-                                    🗑️ 清除截图
+                                    清除截图
                                 </button>
                             </div>
                             <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
@@ -1562,10 +1565,10 @@
                         <div id="screenshot-upload-section" style="display: none;">
                             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('screenshot-upload').click()">
-                                    📁 上传图片文件
+                                    上传图片文件
                                 </button>
                                 <button type="button" class="btn btn-secondary" onclick="clearScreenshot()" style="background: #dc3545; color: white;">
-                                    🗑️ 清除截图
+                                    清除截图
                                 </button>
                             </div>
                             <div style="font-size: 0.8rem; color: #666; margin-top: 0.25rem;">
@@ -1650,11 +1653,11 @@
                             本地日志
                         </button>
                         <button id="cloud-logs-tab" class="log-tab" onclick="switchLogTab('cloud')" style="padding: 0.75rem 1.5rem; border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent; font-weight: 500;">
-                            云端日志 🌐
+                            云端日志
                         </button>
                     </div>
                     <div style="font-size: 0.8rem; color: #666; padding: 0.5rem;">
-                        🕒 云端日志自动保留48小时
+                        云端日志自动保留48小时
                     </div>
                 </div>
                 
