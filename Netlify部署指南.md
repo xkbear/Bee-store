@@ -30,6 +30,11 @@ IMGBB_API_KEY=your_imgbb_api_key_here
 SCREENSHOT_API_TOKEN=your_screenshot_token_here
 ```
 
+**⚠️ 安全提醒**：
+- 请使用您自己的真实API密钥替换上述占位符
+- 真实密钥只在Netlify环境变量中配置，切勿提交到GitHub
+- 参考 `API服务注册指南.md` 获取各服务的API密钥
+
 ### 5️⃣ 部署验证
 - 等待部署完成（1-3分钟）
 - 访问生成的URL测试功能
@@ -49,6 +54,18 @@ SCREENSHOT_API_TOKEN=your_screenshot_token_here
 - [ ] 发布作品功能正常
 - [ ] 截图功能正常
 - [ ] 图片上传功能正常
+
+## 🔐 安全最佳实践
+
+### API密钥管理
+1. **本地开发**：使用 `.env` 文件（已在 `.gitignore` 中）
+2. **生产环境**：只在Netlify环境变量中配置
+3. **版本控制**：切勿将真实密钥提交到Git
+
+### 密钥轮换
+- 定期更换API密钥
+- 如密钥泄露，立即重新生成
+- 监控API使用情况
 
 ## 📞 技术支持
 如有问题，请检查：
