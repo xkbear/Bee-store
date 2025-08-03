@@ -28,3 +28,6 @@ logs/
 # 部署相关
 dist/
 build/
+
+# Local Netlify folder
+.netlify

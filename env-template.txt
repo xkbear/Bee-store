@@ -1,0 +1,34 @@
+# Bee Store 环境变量配置模板
+# 复制此内容到 .env 文件并填入真实的API密钥
+
+# ===== 必需配置 =====
+# JSONBin.io 数据存储（必需）
+JSONBIN_BIN_ID=your_bin_id_here
+JSONBIN_API_KEY=your_master_key_here
+
+# ===== 可选配置 =====
+# ImgBB 图片托管（推荐）
+IMGBB_API_KEY=your_imgbb_api_key_here
+
+# Screenshot API 网页截图（可选）
+SCREENSHOT_API_TOKEN=your_screenshot_token_here
+
+# ===== 配置说明 =====
+# 1. JSONBin配置获取：
+#    - 访问 https://jsonbin.io/
+#    - 注册并登录
+#    - API Keys页面获取Master Key
+#    - 创建新Bin获取Bin ID
+#
+# 2. ImgBB配置获取：
+#    - 访问 https://imgbb.com/api
+#    - 注册并获取API Key
+#
+# 3. Screenshot API配置获取：
+#    - 访问 https://screenshotapi.net/
+#    - 注册并获取Token
+
+# ===== 安全提醒 =====
+# - 请勿将.env文件提交到Git
+# - API密钥请妥善保管
+# - 生产环境请在Netlify中配置环境变量 

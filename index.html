@@ -5783,7 +5783,7 @@
             logger.cleanupCloudLogs().catch(e => console.warn('定期清理失败:', e));
         }, 12 * 60 * 60 * 1000);
 
-        // 启动定期后台同步机制（每2分钟检查一次待同步操作）
+        // 启动定期后台同步机制（每1小时检查一次待同步操作）
         setInterval(() => {
             const pendingOps = localCache.getPendingOperations();
             if (pendingOps.length > 0) {
@@ -5793,7 +5793,7 @@
                 });
                 syncQueue.retryFailedSync().catch(e => console.warn('定期同步失败:', e));
             }
-        }, 2 * 60 * 1000); // 每2分钟检查一次
+        }, 60 * 60 * 1000); // 每1小时检查一次
 
         // 启动定期操作队列清理机制（每小时清理一次过期操作）
         setInterval(() => {
