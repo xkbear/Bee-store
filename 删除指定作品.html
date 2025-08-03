@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>删除指定作品工具</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            padding: 2rem; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            background: #f5f5f7;
+        }
+        .container { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .button { 
+            background: #007AFF; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 8px; 
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .button:hover { background: #0056CC; }
+        .button.danger { background: #FF3B30; }
+        .button.danger:hover { background: #CC0000; }
+        .button.success { background: #34C759; }
+        .button.success:hover { background: #28A745; }
+        .output { 
+            background: #f8f9fa; 
+            padding: 16px; 
+            border-radius: 8px; 
+            margin: 16px 0; 
+            font-family: monospace; 
+            border-left: 4px solid #007AFF;
+        }
+        .item { 
+            background: #fff; 
+            border: 1px solid #e1e5e9; 
+            border-radius: 8px; 
+            padding: 16px; 
+            margin: 12px 0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .item.deleted { 
+            background: #f8f9fa; 
+            opacity: 0.6; 
+            border-color: #28a745;
+        }
+        .item-info { flex: 1; }
+        .item-name { font-weight: bold; font-size: 18px; color: #1d1d1f; }
+        .item-author { color: #6c757d; margin-top: 4px; }
+        .item-id { color: #8e8e93; font-size: 14px; }
+        .progress { 
+            background: #e9ecef; 
+            border-radius: 4px; 
+            height: 8px; 
+            overflow: hidden; 
+            margin: 16px 0;
+        }
+        .progress-bar { 
+            background: #007AFF; 
+            height: 100%; 
+            transition: width 0.3s;
+        }
+        .status { 
+            padding: 8px 16px; 
+            border-radius: 6px; 
+            font-weight: 500; 
+            display: inline-block;
+        }
+        .status.pending { background: #fff3cd; color: #856404; }
+        .status.deleting { background: #cce5ff; color: #004085; }
+        .status.deleted { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ 删除指定作品工具</h1>
+        
+        <div class="output">
+            <strong>目标作品：</strong><br>
+            • 2Brain (作者: Beebee AI)<br>
+            • Beebee Trademate (作者: Beebee AI)
+        </div>
+
+        <div style="margin: 24px 0;">
+            <button class="button" onclick="loadData()">1. 加载当前数据</button>
+            <button class="button" onclick="findTargetApps()">2. 查找目标作品</button>
+            <button class="button danger" onclick="deleteTargetApps()" id="deleteBtn" disabled>3. 删除作品</button>
+            <button class="button success" onclick="saveData()" id="saveBtn" disabled>4. 保存更改</button>
+        </div>
+
+        <div class="progress" style="display: none;" id="progress">
+            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+        </div>
+
+        <div id="targetApps" style="display: none;">
+            <h3>🎯 找到的目标作品：</h3>
+            <div id="appsList"></div>
+        </div>
+
+        <div class="output" id="output">
+            <strong>操作日志：</strong><br>
+            等待开始操作...
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        let targetApps = [];
+        let deletedIds = [];
+
+        function log(message) {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            output.innerHTML += `<br>[${timestamp}] ${message}`;
+            console.log(message);
+        }
+
+        function updateProgress(percent) {
+            const progress = document.getElementById('progress');
+            const progressBar = document.getElementById('progressBar');
+            progress.style.display = 'block';
+            progressBar.style.width = percent + '%';
+        }
+
+        async function loadData() {
+            try {
+                log('正在加载数据...');
+                const response = await fetch('/.netlify/functions/jsonbin-proxy');
+                const data = await response.json();
+                
+                if (data.record) {
+                    currentData = data.record;
+                    log(`✅ 数据加载成功！共 ${currentData.apps.length} 个作品`);
+                    updateProgress(25);
+                } else {
+                    throw new Error('数据格式错误');
+                }
+            } catch (error) {
+                log(`❌ 加载数据失败: ${error.message}`);
+            }
+        }
+
+        function findTargetApps() {
+            if (!currentData) {
+                log('❌ 请先加载数据');
+                return;
+            }
+
+            const targetNames = ['2Brain', 'Beebee Trademate'];
+            const targetAuthor = 'Beebee AI';
+            
+            targetApps = currentData.apps.filter(app => 
+                targetNames.includes(app.name) && app.author === targetAuthor
+            );
+
+            log(`🔍 搜索完成，找到 ${targetApps.length} 个目标作品`);
+            
+            if (targetApps.length > 0) {
+                displayTargetApps();
+                document.getElementById('deleteBtn').disabled = false;
+                updateProgress(50);
+            } else {
+                log('ℹ️ 未找到需要删除的作品');
+            }
+        }
+
+        function displayTargetApps() {
+            const container = document.getElementById('targetApps');
+            const appsList = document.getElementById('appsList');
+            
+            appsList.innerHTML = '';
+            
+            targetApps.forEach(app => {
+                const item = document.createElement('div');
+                item.className = 'item';
+                item.id = `app-${app.id}`;
+                
+                item.innerHTML = `
+                    <div class="item-info">
+                        <div class="item-name">${app.name}</div>
+                        <div class="item-author">作者: ${app.author}</div>
+                        <div class="item-id">ID: ${app.id}</div>
+                    </div>
+                    <div class="status pending" id="status-${app.id}">待删除</div>
+                `;
+                
+                appsList.appendChild(item);
+            });
+            
+            container.style.display = 'block';
+        }
+
+        function updateAppStatus(appId, status, statusText) {
+            const item = document.getElementById(`app-${appId}`);
+            const statusEl = document.getElementById(`status-${appId}`);
+            
+            if (item && statusEl) {
+                statusEl.className = `status ${status}`;
+                statusEl.textContent = statusText;
+                
+                if (status === 'deleted') {
+                    item.className = 'item deleted';
+                }
+            }
+        }
+
+        async function deleteTargetApps() {
+            if (targetApps.length === 0) {
+                log('❌ 没有找到要删除的作品');
+                return;
+            }
+
+            log('🗑️ 开始删除作品...');
+            
+            for (let i = 0; i < targetApps.length; i++) {
+                const app = targetApps[i];
+                updateAppStatus(app.id, 'deleting', '删除中...');
+                
+                // 从数组中删除
+                currentData.apps = currentData.apps.filter(a => a.id !== app.id);
+                deletedIds.push(app.id);
+                
+                updateAppStatus(app.id, 'deleted', '已删除');
+                log(`✅ 已删除: ${app.name} (ID: ${app.id})`);
+                
+                // 模拟处理时间
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+
+            log(`🎉 删除完成！共删除 ${deletedIds.length} 个作品`);
+            document.getElementById('saveBtn').disabled = false;
+            updateProgress(75);
+        }
+
+        async function saveData() {
+            if (!currentData) {
+                log('❌ 没有数据可保存');
+                return;
+            }
+
+            try {
+                log('💾 正在保存到云端...');
+                
+                // 添加删除记录到数据中
+                currentData.lastModified = new Date().toISOString();
+                currentData.deleteInfo = {
+                    deletedAt: new Date().toISOString(),
+                    deletedApps: deletedIds.length,
+                    deletedBy: 'Admin',
+                    reason: '删除指定作品: 2Brain, Beebee Trademate'
+                };
+
+                const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentData)
+                });
+
+                if (response.ok) {
+                    log('✅ 数据保存成功！');
+                    log(`📊 当前作品总数: ${currentData.apps.length}`);
+                    updateProgress(100);
+                } else {
+                    throw new Error(`保存失败: ${response.status}`);
+                }
+            } catch (error) {
+                log(`❌ 保存失败: ${error.message}`);
+            }
+        }
+
+        // 页面加载完成后自动开始
+        window.onload = function() {
+            log('🚀 删除工具已就绪');
+            log('⚠️ 请按顺序点击按钮执行操作');
+        };
+    </script>
+</body>
+</html> 

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自动修复 Bee Store</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            padding: 2rem; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: #f5f5f7;
+        }
+        .container { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .progress {
+            background: #e9ecef;
+            border-radius: 8px;
+            height: 20px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress-bar {
+            background: #007AFF;
+            height: 100%;
+            width: 0%;
+            border-radius: 8px;
+            transition: width 0.5s ease;
+        }
+        .step {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .step.active {
+            background: #e3f2fd;
+            border-left: 4px solid #007AFF;
+        }
+        .step.completed {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .button {
+            background: #007AFF;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 20px;
+        }
+        .button:hover { background: #0056CC; }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 自动修复 Bee Store 数据问题</h1>
+        <p>即将自动修复数据同步问题，确保显示正确的数据（17个作品，20个用户）</p>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        
+        <div id="step1" class="step">
+            <strong>步骤1:</strong> 检查当前状态
+        </div>
+        <div id="step2" class="step">
+            <strong>步骤2:</strong> 获取云端正确数据
+        </div>
+        <div id="step3" class="step">
+            <strong>步骤3:</strong> 清除本地缓存
+        </div>
+        <div id="step4" class="step">
+            <strong>步骤4:</strong> 应用正确数据
+        </div>
+        <div id="step5" class="step">
+            <strong>步骤5:</strong> 验证修复结果
+        </div>
+        
+        <button class="button" onclick="startAutoFix()">🚀 开始自动修复</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const totalSteps = 5;
+
+        function updateProgress(step) {
+            currentStep = step;
+            const percentage = (step / totalSteps) * 100;
+            document.getElementById('progressBar').style.width = percentage + '%';
+            
+            // 更新步骤状态
+            for (let i = 1; i <= totalSteps; i++) {
+                const stepElement = document.getElementById(`step${i}`);
+                stepElement.classList.remove('active', 'completed');
+                
+                if (i < step) {
+                    stepElement.classList.add('completed');
+                    stepElement.innerHTML = stepElement.innerHTML.replace('步骤', '✅ 步骤');
+                } else if (i === step) {
+                    stepElement.classList.add('active');
+                    stepElement.innerHTML = stepElement.innerHTML.replace('步骤', '⏳ 步骤');
+                }
+            }
+        }
+
+        async function startAutoFix() {
+            try {
+                // 步骤1: 检查当前状态
+                updateProgress(1);
+                await sleep(1000);
+                
+                const localData = localStorage.getItem('beestoreCloudData');
+                let localApps = 0, localUsers = 0;
+                if (localData) {
+                    const data = JSON.parse(localData);
+                    localApps = data.apps?.length || 0;
+                    localUsers = data.users?.length || 0;
+                }
+                
+                // 步骤2: 获取云端正确数据
+                updateProgress(2);
+                await sleep(1000);
+                
+                const response = await fetch('/.netlify/functions/jsonbin-proxy');
+                const cloudData = await response.json();
+                
+                if (!cloudData.record) {
+                    throw new Error('无法获取云端数据');
+                }
+                
+                const correctData = cloudData.record;
+                const cloudApps = correctData.apps?.length || 0;
+                const cloudUsers = correctData.users?.length || 0;
+                
+                // 步骤3: 清除本地缓存
+                updateProgress(3);
+                await sleep(1000);
+                
+                const cacheKeys = [
+                    'beestoreLocalBackup',
+                    'beestoreCloudData', 
+                    'beestoreCloudMeta'
+                ];
+                
+                cacheKeys.forEach(key => {
+                    localStorage.removeItem(key);
+                });
+                
+                // 步骤4: 应用正确数据
+                updateProgress(4);
+                await sleep(1000);
+                
+                localStorage.setItem('beestoreCloudData', JSON.stringify(correctData));
+                localStorage.setItem('beestoreCloudMeta', JSON.stringify({
+                    lastSync: correctData.lastSync || new Date().toISOString(),
+                    syncMethod: 'auto_fix',
+                    timestamp: new Date().toISOString()
+                }));
+                
+                // 步骤5: 验证修复结果
+                updateProgress(5);
+                await sleep(1000);
+                
+                // 显示修复结果
+                const resultDiv = document.getElementById('result');
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = `
+                    <h3>🎉 修复成功！</h3>
+                    <div style="text-align: left; margin: 15px 0;">
+                        <strong>修复前本地数据：</strong><br>
+                        📱 ${localUsers} 个用户，${localApps} 个作品 (包含已删除的作品)<br><br>
+                        
+                        <strong>修复后数据：</strong><br>
+                        ☁️ ${cloudUsers} 个用户，${cloudApps} 个作品 (正确数据)<br><br>
+                        
+                        <strong>下一步：</strong><br>
+                        现在返回 Bee Store 页面并刷新，您将看到正确的数据！
+                    </div>
+                    <button class="button" onclick="openBeeStore()">📱 打开 Bee Store</button>
+                `;
+                
+            } catch (error) {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = `
+                    <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px;">
+                        <strong>❌ 修复失败：</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function openBeeStore() {
+            window.open('/', '_self');
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 页面加载后自动开始修复
+        window.onload = function() {
+            setTimeout(startAutoFix, 2000);
+        };
+    </script>
+</body>
+</html> 

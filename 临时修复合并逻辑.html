@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修复 Bee Store 数据合并问题</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            padding: 2rem; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: #f5f5f7;
+        }
+        .container { 
+            background: white; 
+            padding: 2rem; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .button { 
+            background: #007AFF; 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 8px; 
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .button:hover { background: #0056CC; }
+        .button.danger { background: #FF3B30; }
+        .button.danger:hover { background: #CC0000; }
+        .output { 
+            background: #f8f9fa; 
+            padding: 1rem; 
+            border-radius: 8px; 
+            margin-top: 1rem; 
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 修复 Bee Store 数据合并问题</h1>
+        
+        <div class="warning">
+            <strong>⚠️ 问题说明：</strong><br>
+            Bee Store的数据合并逻辑会保留本地的旧数据，导致已删除的作品重新出现。
+            此工具将强制使用云端的最新数据。
+        </div>
+        
+        <div>
+            <button class="button" onclick="checkStatus()">🔍 检查当前状态</button>
+            <button class="button danger" onclick="forceCloudSync()">🚀 强制同步云端数据</button>
+            <button class="button" onclick="clearAndReload()">🧹 清除缓存并重载</button>
+        </div>
+        
+        <div id="output" class="output"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const output = document.getElementById('output');
+            const time = new Date().toLocaleTimeString();
+            output.innerHTML += `[${time}] ${message}<br>`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function checkStatus() {
+            log('=== 检查当前数据状态 ===');
+            
+            try {
+                // 检查本地缓存
+                const localData = localStorage.getItem('beestoreCloudData');
+                if (localData) {
+                    const data = JSON.parse(localData);
+                    log(`📱 本地缓存: ${data.users?.length || 0} 用户, ${data.apps?.length || 0} 作品`);
+                    
+                    const problematicApps = data.apps?.filter(app => 
+                        app.name === '2Brain' || app.name === 'Beebee Trademate'
+                    ) || [];
+                    
+                    if (problematicApps.length > 0) {
+                        log(`🚨 本地缓存问题: 发现 ${problematicApps.length} 个应该删除的作品`);
+                        problematicApps.forEach(app => {
+                            log(`   - ${app.name} (ID: ${app.id})`);
+                        });
+                    } else {
+                        log(`✅ 本地缓存正常: 未发现问题作品`);
+                    }
+                } else {
+                    log(`📱 本地缓存: 未找到数据`);
+                }
+                
+                // 检查云端数据
+                const response = await fetch('/.netlify/functions/jsonbin-proxy');
+                const cloudData = await response.json();
+                
+                if (cloudData.record) {
+                    const data = cloudData.record;
+                    log(`☁️ 云端数据: ${data.users?.length || 0} 用户, ${data.apps?.length || 0} 作品`);
+                    
+                    const problematicApps = data.apps?.filter(app => 
+                        app.name === '2Brain' || app.name === 'Beebee Trademate'
+                    ) || [];
+                    
+                    if (problematicApps.length > 0) {
+                        log(`🚨 云端数据问题: 发现 ${problematicApps.length} 个未删除的作品`);
+                    } else {
+                        log(`✅ 云端数据正常: 已删除问题作品`);
+                    }
+                }
+                
+            } catch (error) {
+                log(`❌ 检查失败: ${error.message}`);
+            }
+        }
+
+        async function forceCloudSync() {
+            log('=== 开始强制同步云端数据 ===');
+            
+            try {
+                // 1. 获取云端数据
+                log('📡 正在获取云端数据...');
+                const response = await fetch('/.netlify/functions/jsonbin-proxy');
+                const cloudData = await response.json();
+                
+                if (!cloudData.record) {
+                    throw new Error('云端数据格式错误');
+                }
+                
+                const remoteData = cloudData.record;
+                log(`☁️ 云端数据: ${remoteData.users?.length || 0} 用户, ${remoteData.apps?.length || 0} 作品`);
+                
+                // 2. 直接使用云端数据替换本地数据
+                log('💾 正在更新本地缓存...');
+                
+                // 清除所有相关缓存
+                const cacheKeys = [
+                    'beestoreLocalBackup',
+                    'beestoreCloudData', 
+                    'beestoreCloudMeta'
+                ];
+                
+                cacheKeys.forEach(key => {
+                    localStorage.removeItem(key);
+                    log(`🗑️ 已清除: ${key}`);
+                });
+                
+                // 直接保存云端数据到本地缓存
+                localStorage.setItem('beestoreCloudData', JSON.stringify(remoteData));
+                localStorage.setItem('beestoreCloudMeta', JSON.stringify({
+                    lastSync: remoteData.lastSync || new Date().toISOString(),
+                    syncMethod: 'force_cloud_sync',
+                    timestamp: new Date().toISOString()
+                }));
+                
+                log(`✅ 强制同步完成: ${remoteData.users?.length || 0} 用户, ${remoteData.apps?.length || 0} 作品`);
+                log('🔄 请返回 Bee Store 页面并刷新查看结果');
+                
+                // 显示成功消息
+                const container = document.querySelector('.container');
+                const successDiv = document.createElement('div');
+                successDiv.className = 'success';
+                successDiv.innerHTML = `
+                    <strong>✅ 强制同步成功！</strong><br>
+                    现在返回 Bee Store 页面并刷新（Cmd+R），应该能看到正确的数据了。<br>
+                    <small>云端数据：${remoteData.users?.length || 0} 用户，${remoteData.apps?.length || 0} 作品</small>
+                `;
+                container.appendChild(successDiv);
+                
+            } catch (error) {
+                log(`❌ 强制同步失败: ${error.message}`);
+            }
+        }
+
+        function clearAndReload() {
+            log('=== 清除所有缓存并重载 ===');
+            
+            // 清除所有Bee Store相关的localStorage
+            const allKeys = Object.keys(localStorage);
+            const beeStoreKeys = allKeys.filter(key => key.startsWith('beestore') || key === 'currentUser');
+            
+            beeStoreKeys.forEach(key => {
+                localStorage.removeItem(key);
+                log(`🗑️ 已清除: ${key}`);
+            });
+            
+            log(`✅ 已清除 ${beeStoreKeys.length} 个缓存项目`);
+            log('🔄 正在重新打开 Bee Store...');
+            
+            // 延迟后重新打开Bee Store
+            setTimeout(() => {
+                window.open('/', '_blank');
+            }, 1000);
+        }
+
+        // 页面加载时自动检查状态
+        window.onload = function() {
+            log('🚀 数据修复工具已就绪');
+            checkStatus();
+        };
+    </script>
+</body>
+</html> 
