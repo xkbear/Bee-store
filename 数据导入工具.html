@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bee Store 数据导入工具</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 2rem; max-width: 1000px; margin: 0 auto; }
+        .container { background: #f8f9fa; padding: 2rem; border-radius: 12px; }
+        .button { background: #007AFF; color: white; border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; margin: 0.5rem; }
+        .button:hover { background: #0056CC; }
+        .button.danger { background: #FF3B30; }
+        .button.danger:hover { background: #CC0000; }
+        .textarea { width: 100%; min-height: 300px; font-family: monospace; padding: 1rem; border: 2px solid #ddd; border-radius: 8px; }
+        .output { background: #fff; padding: 1rem; border-radius: 8px; margin-top: 1rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .success { color: #28a745; background: #d4edda; }
+        .error { color: #dc3545; background: #f8d7da; }
+        .warning { color: #856404; background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        .step { background: white; padding: 1.5rem; margin: 1rem 0; border-radius: 8px; border-left: 4px solid #007AFF; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐝 Bee Store 数据导入工具</h1>
+        
+        <div class="warning">
+            <strong>重要提醒：</strong><br>
+            1. 此操作将完全替换您当前的数据<br>
+            2. 建议先备份当前数据<br>
+            3. 确保导入的JSON格式正确
+        </div>
+
+        <div class="step">
+            <h3>步骤1：备份当前数据</h3>
+            <button class="button" onclick="backupCurrentData()">📥 备份当前数据</button>
+            <p>在导入新数据前，先备份您当前的数据以防万一。</p>
+        </div>
+
+        <div class="step">
+            <h3>步骤2：验证导入数据</h3>
+            <textarea id="importData" class="textarea" placeholder="请粘贴从Ashlynn JSONBin导出的完整JSON数据..."></textarea>
+            <br>
+            <button class="button" onclick="validateData()">🔍 验证数据格式</button>
+            <button class="button" onclick="previewData()">👀 预览数据</button>
+        </div>
+
+        <div class="step">
+            <h3>步骤3：执行导入</h3>
+            <button class="button danger" onclick="importData()" id="importBtn" disabled>⚠️ 导入数据（不可撤销）</button>
+            <p><small>只有在数据验证通过后，此按钮才会启用</small></p>
+        </div>
+
+        <div class="step">
+            <h3>操作日志</h3>
+            <div id="output" class="output">等待操作...</div>
+        </div>
+    </div>
+
+    <script>
+        let validatedData = null;
+
+        function log(message, type = 'info') {
+            const output = document.getElementById('output');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : '';
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        async function backupCurrentData() {
+            log('开始备份当前数据...');
+            
+            try {
+                const response = await fetch('/.netlify/functions/jsonbin-proxy');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const backupData = {
+                    backupTime: new Date().toISOString(),
+                    originalData: data.record || data
+                };
+                
+                downloadJSON(backupData, `bee-store-backup-${new Date().toISOString().split('T')[0]}.json`);
+                log('✅ 当前数据备份完成！', 'success');
+                
+            } catch (error) {
+                log(`❌ 备份失败: ${error.message}`, 'error');
+            }
+        }
+
+        function validateData() {
+            const input = document.getElementById('importData').value.trim();
+            
+            if (!input) {
+                log('❌ 请先粘贴JSON数据', 'error');
+                return;
+            }
+
+            try {
+                const data = JSON.parse(input);
+                
+                // 验证数据结构
+                if (!data.users || !Array.isArray(data.users)) {
+                    throw new Error('缺少users数组或格式错误');
+                }
+                
+                if (!data.apps || !Array.isArray(data.apps)) {
+                    throw new Error('缺少apps数组或格式错误');
+                }
+
+                // 统计信息
+                const userCount = data.users.length;
+                const appCount = data.apps.length;
+                
+                log(`✅ 数据格式验证通过！`, 'success');
+                log(`📊 用户数量: ${userCount}`);
+                log(`📊 作品数量: ${appCount}`);
+                
+                // 验证数据完整性
+                let warnings = [];
+                
+                // 检查用户数据
+                data.users.forEach((user, index) => {
+                    if (!user.id || !user.username) {
+                        warnings.push(`用户${index + 1}缺少必要字段`);
+                    }
+                });
+                
+                // 检查作品数据
+                data.apps.forEach((app, index) => {
+                    if (!app.id || !app.name || !app.author) {
+                        warnings.push(`作品${index + 1}缺少必要字段`);
+                    }
+                });
+
+                if (warnings.length > 0) {
+                    log(`⚠️ 发现${warnings.length}个警告:`, 'error');
+                    warnings.forEach(warning => log(`   - ${warning}`, 'error'));
+                } else {
+                    log('✅ 数据完整性检查通过！', 'success');
+                }
+                
+                validatedData = data;
+                document.getElementById('importBtn').disabled = false;
+                
+            } catch (error) {
+                log(`❌ 数据格式验证失败: ${error.message}`, 'error');
+                validatedData = null;
+                document.getElementById('importBtn').disabled = true;
+            }
+        }
+
+        function previewData() {
+            if (!validatedData) {
+                log('❌ 请先验证数据', 'error');
+                return;
+            }
+
+            log('📋 数据预览:', 'info');
+            
+            // 显示前几个用户
+            if (validatedData.users.length > 0) {
+                log(`👥 用户示例:`);
+                validatedData.users.slice(0, 3).forEach(user => {
+                    log(`   - ${user.username} (${user.email || '无邮箱'})`);
+                });
+                if (validatedData.users.length > 3) {
+                    log(`   - ... 还有 ${validatedData.users.length - 3} 个用户`);
+                }
+            }
+
+            // 显示前几个作品
+            if (validatedData.apps.length > 0) {
+                log(`📱 作品示例:`);
+                validatedData.apps.slice(0, 3).forEach(app => {
+                    log(`   - ${app.name} by ${app.author}`);
+                });
+                if (validatedData.apps.length > 3) {
+                    log(`   - ... 还有 ${validatedData.apps.length - 3} 个作品`);
+                }
+            }
+        }
+
+        async function importData() {
+            if (!validatedData) {
+                log('❌ 请先验证数据', 'error');
+                return;
+            }
+
+            if (!confirm('确定要导入数据吗？这将完全替换当前数据，且不可撤销！')) {
+                return;
+            }
+
+            log('🚀 开始导入数据到您的JSONBin...', 'info');
+            
+            try {
+                // 添加导入时间戳
+                const importData = {
+                    ...validatedData,
+                    lastSync: new Date().toISOString(),
+                    importInfo: {
+                        importTime: new Date().toISOString(),
+                        source: 'Ashlynn数据导入',
+                        userCount: validatedData.users.length,
+                        appCount: validatedData.apps.length
+                    }
+                };
+
+                const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(importData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                log('🎉 数据导入成功！', 'success');
+                log(`✅ 已导入 ${validatedData.users.length} 个用户`, 'success');
+                log(`✅ 已导入 ${validatedData.apps.length} 个作品`, 'success');
+                log('🔄 建议刷新您的Bee Store页面查看结果', 'success');
+                
+                // 清空输入框
+                document.getElementById('importData').value = '';
+                validatedData = null;
+                document.getElementById('importBtn').disabled = true;
+                
+            } catch (error) {
+                log(`❌ 导入失败: ${error.message}`, 'error');
+            }
+        }
+
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // 页面加载时显示说明
+        window.onload = function() {
+            log('🐝 Bee Store 数据导入工具已就绪');
+            log('📋 请按照步骤操作：1.备份 → 2.验证 → 3.导入');
+        };
+    </script>
+</body>
+</html> 
