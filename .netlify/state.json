@@ -1,0 +1,14 @@
+{
+	"geolocation": {
+		"data": {
+			"country": {
+				"code": "TW",
+				"name": "Taiwan"
+			},
+			"timezone": "Asia/Taipei",
+			"latitude": 24,
+			"longitude": 121
+		},
+		"timestamp": 1754213585185
+	}
+}
