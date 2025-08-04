@@ -1,14 +1,19 @@
 {
 	"geolocation": {
 		"data": {
+			"city": "Chengdu",
 			"country": {
-				"code": "TW",
-				"name": "Taiwan"
+				"code": "CN",
+				"name": "China"
 			},
-			"timezone": "Asia/Taipei",
-			"latitude": 24,
-			"longitude": 121
+			"subdivision": {
+				"code": "SC",
+				"name": "Sichuan"
+			},
+			"timezone": "Asia/Shanghai",
+			"latitude": 30.6667,
+			"longitude": 104.0667
 		},
-		"timestamp": 1754213585185
+		"timestamp": 1754300421778
 	}
 }

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 彻底修复工具 - Bee Store</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .critical {
+            background: #ffebee;
+            color: #b71c1c;
+            border: 2px solid #f44336;
+            font-weight: bold;
+        }
+
+        .progress {
+            width: 100%;
+            height: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .logs {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            text-align: left;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+
+        .log-item {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-error {
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .log-success {
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .log-warning {
+            color: #f57c00;
+            font-weight: bold;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 彻底修复工具</h1>
+        <div class="status critical">
+            <p><strong>⚠️ 高危修复工具</strong><br>
+            这个工具会彻底清除所有缓存并重置应用状态，强制使用云端数据</p>
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div id="status" class="status info">
+            <p>准备开始彻底修复...</p>
+        </div>
+
+        <div class="logs" id="logs"></div>
+
+        <button id="fixBtn" class="btn" onclick="thoroughFix()">🔥 开始彻底修复</button>
+        <a href="/" class="btn" id="homeBtn" style="display: none;">📱 打开 Bee Store</a>
+    </div>
+
+    <script>
+        let progressBar = document.getElementById('progressBar');
+        let statusDiv = document.getElementById('status');
+        let logsDiv = document.getElementById('logs');
+        let fixBtn = document.getElementById('fixBtn');
+        let homeBtn = document.getElementById('homeBtn');
+
+        function updateProgress(percent) {
+            progressBar.style.width = percent + '%';
+        }
+
+        function updateStatus(message, type = 'info') {
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = `<p>${message}</p>`;
+        }
+
+        function addLog(message, type = 'normal') {
+            logsDiv.style.display = 'block';
+            const logItem = document.createElement('div');
+            logItem.className = `log-item${type !== 'normal' ? ' log-' + type : ''}`;
+            logItem.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logsDiv.appendChild(logItem);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        async function thoroughFix() {
+            fixBtn.disabled = true;
+            updateProgress(0);
+            addLog('🔥 开始彻底修复...', 'warning');
+
+            try {
+                // 步骤1: 获取并验证云端数据
+                updateStatus('☁️ 获取并验证云端数据...', 'info');
+                updateProgress(10);
+                addLog('从云端获取数据...');
+
+                const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`云端请求失败: ${response.status}`);
+                }
+
+                const cloudResponse = await response.json();
+                const cloudData = cloudResponse.record;
+                
+                addLog(`云端数据: ${cloudData.apps.length} 个作品, ${cloudData.users.length} 个用户`, 'success');
+
+                // 验证删除操作
+                const deletedApps = cloudData.apps.filter(app => 
+                    app.name.toLowerCase().includes('2brain') || 
+                    app.name.toLowerCase().includes('beebee trademate')
+                );
+
+                if (deletedApps.length > 0) {
+                    addLog(`错误: 云端仍有 ${deletedApps.length} 个应该被删除的作品`, 'error');
+                    deletedApps.forEach(app => addLog(`- ${app.name}`, 'error'));
+                    throw new Error('云端数据未正确清理');
+                } else {
+                    addLog('✅ 云端数据验证通过', 'success');
+                }
+
+                // 步骤2: 彻底清除所有浏览器存储
+                updateStatus('🧹 彻底清除所有存储...', 'info');
+                updateProgress(30);
+                addLog('清除localStorage...', 'warning');
+
+                // 1. 清除localStorage
+                const localStorageKeys = Object.keys(localStorage);
+                addLog(`发现 ${localStorageKeys.length} 个localStorage项`);
+                localStorage.clear();
+                addLog('localStorage已清空', 'success');
+
+                // 2. 清除sessionStorage
+                const sessionStorageKeys = Object.keys(sessionStorage);
+                addLog(`发现 ${sessionStorageKeys.length} 个sessionStorage项`);
+                sessionStorage.clear();
+                addLog('sessionStorage已清空', 'success');
+
+                // 3. 清除IndexedDB
+                updateProgress(40);
+                addLog('清除IndexedDB...');
+                try {
+                    const databases = await indexedDB.databases();
+                    for (const db of databases) {
+                        indexedDB.deleteDatabase(db.name);
+                        addLog(`删除数据库: ${db.name}`);
+                    }
+                    addLog('IndexedDB已清空', 'success');
+                } catch (e) {
+                    addLog('IndexedDB清除失败（可能不支持）', 'warning');
+                }
+
+                // 4. 清除Cache API
+                updateProgress(50);
+                addLog('清除Cache API...');
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (const name of cacheNames) {
+                        await caches.delete(name);
+                        addLog(`删除缓存: ${name}`);
+                    }
+                    addLog('Cache API已清空', 'success');
+                } else {
+                    addLog('Cache API不可用', 'warning');
+                }
+
+                // 步骤3: 清除Cookies
+                updateProgress(60);
+                addLog('清除Cookies...');
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                addLog('Cookies已清空', 'success');
+
+                // 步骤4: 强制设置云端数据并标记强制模式
+                updateStatus('🔧 强制设置云端数据...', 'info');
+                updateProgress(80);
+                addLog('设置强制模式标记...', 'warning');
+
+                // 设置强制模式标记，让主页面跳过本地数据加载
+                localStorage.setItem('FORCE_CLOUD_MODE', JSON.stringify({
+                    enabled: true,
+                    cloudData: cloudData,
+                    timestamp: Date.now(),
+                    reason: 'thorough_fix'
+                }));
+
+                addLog('强制模式已启用', 'success');
+
+                // 步骤5: 等待并完成
+                updateStatus('⏳ 等待系统稳定...', 'info');
+                updateProgress(90);
+                addLog('等待3秒让系统稳定...');
+                await new Promise(resolve => setTimeout(resolve, 3000));
+
+                updateStatus('🎉 彻底修复完成！', 'success');
+                updateProgress(100);
+                addLog('🎉 彻底修复完成！', 'success');
+                addLog(`将显示: ${cloudData.apps.length} 个作品, ${cloudData.users.length} 个用户`, 'success');
+                addLog('现在打开Bee Store，应该显示正确的数据', 'success');
+
+                homeBtn.style.display = 'inline-block';
+
+            } catch (error) {
+                updateStatus(`❌ 彻底修复失败: ${error.message}`, 'error');
+                addLog(`严重错误: ${error.message}`, 'error');
+                fixBtn.disabled = false;
+            }
+        }
+
+        // 页面加载时显示警告
+        window.onload = function() {
+            addLog('⚠️ 这是一个高危修复工具', 'warning');
+            addLog('它会清除所有浏览器数据', 'warning');
+            addLog('请确保您了解操作后果', 'warning');
+            addLog('准备好后点击按钮开始修复', 'warning');
+        };
+    </script>
+</body>
+</html> 

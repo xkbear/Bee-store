@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔄 强制刷新数据 - Bee Store</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #bbdefb;
+        }
+
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .progress {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .logs {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+        }
+
+        .log-item {
+            margin: 5px 0;
+            padding: 3px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 强制刷新数据</h1>
+        <div class="status info">
+            <p>这个工具将强制清除所有缓存并重新加载云端数据</p>
+        </div>
+
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+
+        <div id="status" class="status info">
+            <p>准备开始强制刷新...</p>
+        </div>
+
+        <div class="logs" id="logs"></div>
+
+        <button id="refreshBtn" class="btn" onclick="forceRefresh()">🔄 开始强制刷新</button>
+        <a href="/" class="btn" id="homeBtn" style="display: none;">📱 打开 Bee Store</a>
+    </div>
+
+    <script>
+        let progressBar = document.getElementById('progressBar');
+        let statusDiv = document.getElementById('status');
+        let logsDiv = document.getElementById('logs');
+        let refreshBtn = document.getElementById('refreshBtn');
+        let homeBtn = document.getElementById('homeBtn');
+
+        function updateProgress(percent) {
+            progressBar.style.width = percent + '%';
+        }
+
+        function updateStatus(message, type = 'info') {
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = `<p>${message}</p>`;
+        }
+
+        function addLog(message) {
+            logsDiv.style.display = 'block';
+            const logItem = document.createElement('div');
+            logItem.className = 'log-item';
+            logItem.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            logsDiv.appendChild(logItem);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        async function forceRefresh() {
+            refreshBtn.disabled = true;
+            updateProgress(0);
+            addLog('开始强制刷新数据...');
+
+            try {
+                // 步骤1: 清除所有本地存储
+                updateStatus('🧹 清除本地存储...', 'info');
+                updateProgress(20);
+                addLog('清除localStorage...');
+                
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // 清除所有BeeStore相关的缓存
+                const keys = ['beestoreLocalBackup', 'beestoreCache', 'beestoreData', 'beestore_apps', 'beestore_users'];
+                keys.forEach(key => {
+                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
+                });
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 步骤2: 强制从云端加载数据
+                updateStatus('☁️ 从云端加载最新数据...', 'info');
+                updateProgress(50);
+                addLog('请求云端数据...');
+
+                const response = await fetch('/.netlify/functions/jsonbin-proxy', {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`云端请求失败: ${response.status}`);
+                }
+
+                const data = await response.json();
+                addLog(`云端数据加载成功: ${data.record.apps.length} 个作品, ${data.record.users.length} 个用户`);
+
+                // 步骤3: 验证数据
+                updateStatus('✅ 验证数据完整性...', 'info');
+                updateProgress(80);
+                addLog('验证数据完整性...');
+
+                if (!data.record || !data.record.apps || !data.record.users) {
+                    throw new Error('云端数据格式错误');
+                }
+
+                // 检查是否还有被删除的作品
+                const deletedApps = data.record.apps.filter(app => 
+                    app.name.toLowerCase().includes('2brain') || 
+                    app.name.toLowerCase().includes('beebee trademate')
+                );
+
+                if (deletedApps.length > 0) {
+                    addLog(`警告: 发现 ${deletedApps.length} 个应该被删除的作品`);
+                    deletedApps.forEach(app => addLog(`- ${app.name}`));
+                } else {
+                    addLog('✅ 确认删除操作已生效');
+                }
+
+                // 步骤4: 强制重新加载页面缓存
+                updateStatus('🔄 清除页面缓存...', 'info');
+                updateProgress(90);
+                addLog('清除页面缓存...');
+
+                // 清除页面缓存
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    await Promise.all(
+                        cacheNames.map(name => caches.delete(name))
+                    );
+                    addLog('页面缓存已清除');
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // 完成
+                updateStatus('🎉 强制刷新完成！数据已更新', 'success');
+                updateProgress(100);
+                addLog('强制刷新完成！');
+                addLog(`最终数据: ${data.record.apps.length} 个作品, ${data.record.users.length} 个用户`);
+
+                homeBtn.style.display = 'inline-block';
+
+            } catch (error) {
+                updateStatus(`❌ 强制刷新失败: ${error.message}`, 'error');
+                addLog(`错误: ${error.message}`);
+                refreshBtn.disabled = false;
+            }
+        }
+
+        // 页面加载时自动开始
+        window.onload = function() {
+            setTimeout(() => {
+                forceRefresh();
+            }, 1000);
+        };
+    </script>
+</body>
+</html> 

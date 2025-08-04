@@ -13,11 +13,39 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --dark-gradient: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            --card-gradient: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);
+            --glass-bg: rgba(255, 255, 255, 0.35);
+            --glass-border: rgba(255, 255, 255, 0.25);
+            --card-bg: rgba(255, 255, 255, 0.7);
+            --card-border: rgba(255, 255, 255, 0.4);
+            --shadow-light: 0 8px 32px rgba(31, 38, 135, 0.37);
+            --shadow-heavy: 0 15px 35px rgba(31, 38, 135, 0.5);
+            --text-primary: #1a202c;
+            --text-secondary: #2d3748;
+            --border-radius: 20px;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-attachment: fixed;
             min-height: 100vh;
-            color: #333;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* 毛玻璃效果 */
+        .glass-effect {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-light);
         }
 
         .container {
@@ -55,29 +83,92 @@
 
         /* 头部样式 */
         .header {
-            background: #ffffff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid #f0f0f0;
-            padding: 1rem 0;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1.5rem 0;
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
         }
 
         .nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 1.5rem;
+        }
+
+        .nav-center {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            max-width: 500px;
+        }
+
+        .nav-stats {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .nav-slogan {
+            font-size: 1rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+
+        .nav-stat-item {
+            text-align: center;
+            color: var(--text-primary);
+            min-width: 45px;
+        }
+
+        .nav-stat-item .number {
+            font-size: 1.2rem;
+            font-weight: bold;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: block;
+            line-height: 1.2;
+        }
+
+        .nav-stat-item .label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            line-height: 1;
+            margin-top: 0.1rem;
         }
 
         .logo {
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #ff9500;
+            gap: 0.75rem;
+            font-size: 2rem;
+            font-weight: 800;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            transition: all 0.3s ease;
+            letter-spacing: -0.02em;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
         }
 
         .logo img {
@@ -89,34 +180,144 @@
         .nav-buttons {
             display: flex;
             gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        .nav-search {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 25px;
+            padding: 0.4rem 0.8rem;
+            transition: all 0.3s ease;
+            min-width: 320px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .nav-search:hover,
+        .nav-search:focus-within {
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .nav-search input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            padding: 0.25rem 0;
+            outline: none;
+        }
+
+        .nav-search input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        .nav-search-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .nav-search .dropdown-trigger {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .nav-search .dropdown-trigger:hover {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--text-primary);
+        }
+
+        .nav-search .search-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: 6px;
+            background: var(--primary-gradient);
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .nav-search .search-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
         }
 
         .btn {
-            padding: 0.6rem 1.2rem;
+            padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             text-decoration: none;
             display: inline-block;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.02em;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
-            background: linear-gradient(45deg, #ff9500, #ff6600);
+            background: var(--primary-gradient);
             color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
 
         .btn-secondary {
-            background: #ffffff;
-            color: #ff9500;
-            border: 1px solid #ff9500;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--shadow-light);
         }
 
         .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
         }
 
         .btn:disabled {
@@ -134,18 +335,14 @@
 
         /* 主要内容区域 */
         .main-content {
-            padding: 1rem 0; /* 减少顶部padding */
+            padding: 2rem 0; /* 增加顶部padding，因为删除了统计横幅 */
         }
 
 
 
-        /* 头部整合布局 */
-        .header-integrated {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 12px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 1.5rem; /* 减少间距 */
+        /* 移动端搜索栏样式 */
+        .mobile-search-bar {
+            padding: 0 1rem;
         }
 
         /* 桌面端布局 */
@@ -153,7 +350,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 2rem;
+            gap: 1.5rem;
         }
 
         /* 移动端布局默认隐藏 */
@@ -163,17 +360,22 @@
 
         .header-slogan {
             flex: 0 0 auto;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #ff9500;
+            font-size: 1.2rem;
+            font-weight: 700;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             white-space: nowrap;
+            min-width: 200px;
         }
 
         .header-search {
             flex: 1;
             display: flex;
-            gap: 0.5rem;
+            gap: 0.75rem;
             align-items: center;
+            max-width: 600px;
         }
 
         .search-btn {
@@ -307,8 +509,9 @@
         .header-stats {
             flex: 0 0 auto;
             display: flex;
-            gap: 1.5rem;
-            font-size: 0.9rem;
+            gap: 1rem;
+            font-size: 0.85rem;
+            min-width: 140px;
         }
 
         .stat-compact {
@@ -331,41 +534,79 @@
         /* 应用网格 */
         .apps-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem; /* 减少间距 */
-            margin-top: 0; /* 移除顶部间距 */
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 0;
+            padding: 1rem 0;
         }
 
         .app-card {
-            background: #ffffff;
-            border: 1px solid #e9ecef;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--card-border);
             border-radius: 16px;
             padding: 1.5rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-light);
             position: relative;
+            overflow: hidden;
+        }
+
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--primary-gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
         }
 
         .app-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(255, 149, 0, 0.15);
-            border-color: #ff9500;
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: var(--shadow-heavy);
+            border-color: rgba(102, 126, 234, 0.3);
+        }
+
+        .app-card:hover::before {
+            opacity: 0.03;
         }
 
         .app-screenshot {
             width: 100%;
-            height: 140px; /* 减小高度 */
-            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
+            height: 140px;
+            background: var(--accent-gradient);
+            border: none;
+            border-radius: 12px;
             margin-bottom: 1rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #666;
+            color: white;
             font-size: 0.9rem;
             overflow: hidden;
             position: relative;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+
+        .app-screenshot::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .app-card:hover .app-screenshot::before {
+            transform: translateX(100%);
         }
 
         .app-screenshot img {
@@ -383,18 +624,28 @@
         }
 
         .app-info h3 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
+            font-weight: 700;
             margin-bottom: 0.5rem;
-            color: #333;
+            color: var(--text-primary);
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+            filter: drop-shadow(0 1px 2px rgba(255, 255, 255, 0.9));
         }
 
         /* 产品描述展开功能 */
         .app-description {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            line-height: 1.4;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            line-height: 1.5;
             position: relative;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
         }
 
         .app-description.collapsed {
@@ -447,9 +698,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 1rem;
+            margin-top: 0.75rem;
             font-size: 0.8rem;
-            color: #888;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.7);
         }
 
         .app-stats {
@@ -458,26 +711,28 @@
         }
 
         .app-url {
-            color: #ff6600;
+            color: var(--text-primary);
             text-decoration: none;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             display: inline-flex;
             align-items: center;
             gap: 0.25rem;
             margin-top: 0;
             margin-left: 0.5rem;
-            padding: 0.2rem 0.4rem;
-            border-radius: 4px;
-            background: rgba(255, 102, 0, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            background: var(--primary-gradient);
+            color: white;
             transition: all 0.3s ease;
-            font-weight: 500;
+            font-weight: 600;
             vertical-align: middle;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .app-url:hover {
-            background: rgba(255, 102, 0, 0.2);
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(255, 102, 0, 0.2);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.5);
+            filter: brightness(1.1);
         }
 
         .app-actions {
@@ -527,9 +782,26 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.7);
             z-index: 1000;
-            backdrop-filter: blur(5px);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+            to { 
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
         }
 
         .modal-content {
@@ -537,14 +809,18 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: #ffffff;
-            padding: 2rem;
-            border-radius: 16px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            padding: 2.5rem;
+            border-radius: var(--border-radius);
             width: 90%;
-            max-width: 500px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 520px;
+            box-shadow: var(--shadow-heavy);
             max-height: 90vh;
             overflow-y: auto;
+            animation: slideIn 0.3s ease;
         }
 
         /* 截图方式行 */
@@ -620,16 +896,21 @@
 
         .form-group input, .form-group select, .form-group textarea {
             width: 100%;
-            padding: 0.75rem;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
+            padding: 1rem;
+            border: 2px solid var(--glass-border);
+            border-radius: 12px;
             font-size: 1rem;
-            transition: border-color 0.3s ease;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
         }
 
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
             outline: none;
-            border-color: #ff9500;
+            border-color: rgba(102, 126, 234, 0.5);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            transform: translateY(-1px);
         }
 
         .form-group textarea {
@@ -654,21 +935,30 @@
             position: fixed;
             bottom: 2rem;
             right: 2rem;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #ff9500, #ff6600);
+            width: 70px;
+            height: 70px;
+            border-radius: 20px;
+            background: var(--secondary-gradient);
             color: white;
             border: none;
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(240, 147, 251, 0.4);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .publish-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.3);
+            transform: scale(1.1) rotate(90deg);
+            box-shadow: 0 12px 40px rgba(240, 147, 251, 0.6);
+            border-radius: 50%;
+        }
+
+        .publish-btn:active {
+            transform: scale(0.95) rotate(90deg);
         }
 
         /* 空状态 */
@@ -875,6 +1165,62 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* 页面加载动画 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        /* 应用加载动画到卡片 */
+        .app-card {
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .app-card:nth-child(1) { animation-delay: 0.1s; }
+        .app-card:nth-child(2) { animation-delay: 0.2s; }
+        .app-card:nth-child(3) { animation-delay: 0.3s; }
+        .app-card:nth-child(4) { animation-delay: 0.4s; }
+        .app-card:nth-child(5) { animation-delay: 0.5s; }
+        .app-card:nth-child(6) { animation-delay: 0.6s; }
+
+        /* 头部动画 */
+        .header-integrated {
+            animation: fadeInScale 0.8s ease forwards;
+        }
+
+        /* 加载时的闪烁效果 */
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+
         /* 日志选项卡样式 */
         .log-tab {
             transition: all 0.3s ease;
@@ -1072,16 +1418,38 @@
         /* 响应式设计 */
         @media (max-width: 1024px) {
             .apps-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 1.5rem;
             }
             
             .modal-content {
                 width: 95%;
                 margin: 1rem;
+                padding: 2rem;
+            }
+            
+            .app-card {
+                padding: 1.25rem;
+            }
+            
+            .app-screenshot {
+                height: 130px;
+            }
+            
+            .nav-center {
+                display: none;
+            }
+            
+            .nav-stats {
+                display: none;
             }
             
             .nav-buttons {
                 display: none;
+            }
+            
+            .mobile-search-bar {
+                display: block !important;
             }
 
             .nav {
@@ -1236,16 +1604,46 @@
         @media (max-width: 768px) {
             .apps-grid {
                 grid-template-columns: 1fr;
+                gap: 1.5rem;
+                padding: 0.5rem 0;
             }
             
             .modal-content {
                 width: 95%;
                 margin: 0;
+                padding: 1.5rem;
                 transform: translate(-50%, -50%);
+                border-radius: 16px;
             }
 
             body.no-scroll {
                 overflow: hidden;
+            }
+
+            .app-card {
+                padding: 1.25rem;
+                border-radius: 14px;
+            }
+            
+            .app-screenshot {
+                height: 120px;
+                border-radius: 10px;
+            }
+            
+            .logo {
+                font-size: 1.5rem;
+            }
+            
+            .btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+            
+            .publish-btn {
+                width: 60px;
+                height: 60px;
+                bottom: 1.5rem;
+                right: 1.5rem;
             }
 
             /* 进一步减少移动端的间距 */
@@ -1254,7 +1652,9 @@
             }
 
             .header-integrated {
-                margin-bottom: 0.75rem;
+                margin-bottom: 1rem;
+                padding: 1.5rem;
+                border-radius: 16px;
             }
         }
     </style>
@@ -1269,6 +1669,56 @@
                     <img src="logo.png" alt="Bee Store Logo">
                     <span>Bee Store</span>
                 </a>
+                
+                <div class="nav-center">
+                    <div class="nav-search">
+                        <input type="text" id="nav-search-input" placeholder="搜索作品名称、描述、创作者...">
+                        <div class="nav-search-controls">
+                            <!-- 分类下拉菜单 -->
+                            <div class="custom-dropdown">
+                                <button class="dropdown-trigger" id="nav-category-trigger" onclick="toggleDropdown('nav-category')" title="分类筛选">
+                                    🏷️
+                                </button>
+                                <div class="dropdown-menu" id="nav-category-dropdown">
+                                    <div class="dropdown-item selected" data-value="">全部分类</div>
+                                    <div class="dropdown-item" data-value="工具">🔧 工具</div>
+                                    <div class="dropdown-item" data-value="学习">📚 学习</div>
+                                    <div class="dropdown-item" data-value="游戏">🎮 游戏</div>
+                                    <div class="dropdown-item" data-value="艺术">🎨 艺术</div>
+                                    <div class="dropdown-item" data-value="科技">💻 科技</div>
+                                </div>
+                            </div>
+                            
+                            <!-- 排序下拉菜单 -->
+                            <div class="custom-dropdown">
+                                <button class="dropdown-trigger" id="nav-sort-trigger" onclick="toggleDropdown('nav-sort')" title="排序方式">
+                                    🔄
+                                </button>
+                                <div class="dropdown-menu" id="nav-sort-dropdown">
+                                    <div class="dropdown-item selected" data-value="newest">最新发布</div>
+                                    <div class="dropdown-item" data-value="oldest">最早发布</div>
+                                    <div class="dropdown-item" data-value="name">按名称</div>
+                                    <div class="dropdown-item" data-value="author">按作者</div>
+                                </div>
+                            </div>
+                            
+                            <button class="search-btn" onclick="searchApps()">🔍</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="nav-stats">
+    
+                    <div class="nav-stat-item">
+                        <span class="number" id="nav-total-apps">0</span>
+                        <span class="label">作品总数</span>
+                    </div>
+                    <div class="nav-stat-item">
+                        <span class="number" id="nav-total-users">0</span>
+                        <span class="label">创作者</span>
+                    </div>
+                </div>
+                
                 <div class="nav-buttons">
                     <div id="guest-nav" style="display: flex; gap: 1rem;">
                         <button class="btn btn-secondary" onclick="showLogin()">登录</button>
@@ -1300,20 +1750,17 @@
 
     <div class="container">
         <div class="main-content">
-            <!-- 整合的头部：slogan、搜索、统计 -->
-            <div class="header-integrated">
-                <!-- 桌面端布局 -->
-                <div class="desktop-layout">
-                    
-                    <div class="header-search">
-                        <input type="text" class="search-input" id="search-input" placeholder="搜索作品名称、描述、创作者...">
-                        
+            <!-- 移动端搜索功能 -->
+            <div class="mobile-search-bar" style="display: none;">
+                <div class="nav-search" style="min-width: auto; width: 100%; margin-bottom: 1.5rem;">
+                    <input type="text" id="mobile-search-input" placeholder="搜索作品名称、描述、创作者...">
+                    <div class="nav-search-controls">
                         <!-- 分类下拉菜单 -->
                         <div class="custom-dropdown">
-                            <button class="dropdown-trigger" id="category-trigger" onclick="toggleDropdown('category')" title="分类筛选">
+                            <button class="dropdown-trigger" id="mobile-category-trigger" onclick="toggleDropdown('mobile-category')" title="分类筛选">
                                 🏷️
                             </button>
-                            <div class="dropdown-menu" id="category-dropdown">
+                            <div class="dropdown-menu" id="mobile-category-dropdown">
                                 <div class="dropdown-item selected" data-value="">全部分类</div>
                                 <div class="dropdown-item" data-value="工具">🔧 工具</div>
                                 <div class="dropdown-item" data-value="学习">📚 学习</div>
@@ -1325,10 +1772,10 @@
                         
                         <!-- 排序下拉菜单 -->
                         <div class="custom-dropdown">
-                            <button class="dropdown-trigger" id="sort-trigger" onclick="toggleDropdown('sort')" title="排序方式">
+                            <button class="dropdown-trigger" id="mobile-sort-trigger" onclick="toggleDropdown('mobile-sort')" title="排序方式">
                                 🔄
                             </button>
-                            <div class="dropdown-menu" id="sort-dropdown">
+                            <div class="dropdown-menu" id="mobile-sort-dropdown">
                                 <div class="dropdown-item selected" data-value="newest">最新发布</div>
                                 <div class="dropdown-item" data-value="oldest">最早发布</div>
                                 <div class="dropdown-item" data-value="name">按名称</div>
@@ -1336,94 +1783,7 @@
                             </div>
                         </div>
                         
-                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
-                        
-                        <!-- 隐藏的原始select元素，用于保持功能 -->
-                        <select class="filter-select" id="category-filter" style="display: none;">
-                            <option value="">全部分类</option>
-                            <option value="工具">工具</option>
-                            <option value="学习">学习</option>
-                            <option value="游戏">游戏</option>
-                            <option value="艺术">艺术</option>
-                            <option value="科技">科技</option>
-                        </select>
-                        <select class="filter-select" id="sort-filter" style="display: none;">
-                            <option value="newest">最新发布</option>
-                            <option value="oldest">最早发布</option>
-                            <option value="name">按名称</option>
-                            <option value="author">按作者</option>
-                        </select>
-                    </div>
-                    
-                    <div class="header-stats">
-                        <div class="stat-compact">
-                            <span class="number" id="total-apps">0</span>
-                            <span class="label">作品总数</span>
-                        </div>
-                        <div class="stat-compact">
-                            <span class="number" id="total-users">0</span>
-                            <span class="label">创作者</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 移动端布局 -->
-                <div class="mobile-layout">
-                    <!-- 第一行：标题和搜索框 -->
-                    <div class="mobile-header-row">
-                        <input type="text" class="search-input" id="search-input-mobile" placeholder="搜索作品...">
-                    </div>
-                    
-                    <!-- 第二行：筛选器和搜索按钮 -->
-                    <div class="mobile-filters-row">
-                        <!-- 移动端分类下拉菜单 -->
-                        <div class="custom-dropdown">
-                            <button class="dropdown-trigger" id="category-trigger-mobile" onclick="toggleDropdown('category-mobile')" title="分类筛选">
-                                <svg class="icon" viewBox="0 0 24 24">
-                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-                                    <line x1="7" y1="7" x2="7.01" y2="7"/>
-                                </svg>
-                            </button>
-                            <div class="dropdown-menu" id="category-dropdown-mobile">
-                                <div class="dropdown-item selected" data-value="">全部分类</div>
-                                <div class="dropdown-item" data-value="工具">🔧 工具</div>
-                                <div class="dropdown-item" data-value="学习">📚 学习</div>
-                                <div class="dropdown-item" data-value="游戏">🎮 游戏</div>
-                                <div class="dropdown-item" data-value="艺术">🎨 艺术</div>
-                                <div class="dropdown-item" data-value="科技">💻 科技</div>
-                            </div>
-                        </div>
-                        
-                        <!-- 移动端排序下拉菜单 -->
-                        <div class="custom-dropdown">
-                            <button class="dropdown-trigger" id="sort-trigger-mobile" onclick="toggleDropdown('sort-mobile')" title="排序方式">
-                                📅
-                            </button>
-                            <div class="dropdown-menu" id="sort-dropdown-mobile">
-                                <div class="dropdown-item selected" data-value="newest">最新发布</div>
-                                <div class="dropdown-item" data-value="oldest">最早发布</div>
-                                <div class="dropdown-item" data-value="name">按名称</div>
-                                <div class="dropdown-item" data-value="author">按作者</div>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-primary search-btn" onclick="searchApps()">🔍</button>
-                        
-                        <!-- 隐藏的原始select元素，用于保持功能 -->
-                        <select class="filter-select" id="category-filter-mobile" style="display: none;">
-                            <option value="">全部分类</option>
-                            <option value="工具">工具</option>
-                            <option value="学习">学习</option>
-                            <option value="游戏">游戏</option>
-                            <option value="艺术">艺术</option>
-                            <option value="科技">科技</option>
-                        </select>
-                        <select class="filter-select" id="sort-filter-mobile" style="display: none;">
-                            <option value="newest">最新发布</option>
-                            <option value="oldest">最早发布</option>
-                            <option value="name">按名称</option>
-                            <option value="author">按作者</option>
-                        </select>
+                        <button class="search-btn" onclick="searchApps()">🔍</button>
                     </div>
                 </div>
             </div>
@@ -3087,101 +3447,83 @@
             }
         }
 
-        // 🔥 步骤14-17: 修改初始化函数，优先从本地存储加载数据
+        // 🔥 修改为纯云端模式 - 完全不使用本地数据
         async function init() {
-            logger.info('Bee Store 应用启动', { 
+            logger.info('Bee Store 应用启动 - 纯云端模式', { 
                 timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent,
-                operation: '应用启动'
+                operation: '应用启动 - 纯云端'
             });
             
-            updateStatus('☁️ 正在加载数据...', 'syncing');
+            updateStatus('☁️ 从云端加载数据...', 'syncing');
             
             try {
-                // 🔥 步骤14-15: 首先尝试从本地存储加载数据（快速启动）
-                const localData = localStorageManager.loadFromLocal();
-                if (localData) {
-                    cloudData = ensureDataIntegrity(localData); // 🔥 步骤14: 确保数据完整性
-                    console.log('[BeeStore] 从本地存储加载数据成功');
-                    
-                                         // 立即更新UI
-                     checkLoginStatus();
-                     loadApps();
-                     updateStats();
-                     updateStatus('📱 使用本地数据（离线模式）', 'local');
+                // ☁️ 直接从云端加载数据，不使用任何本地缓存
+                console.log('[BeeStore] 🚀 启动纯云端模式，跳过所有本地数据');
+                
+                const remoteData = await cloudStorage.loadData();
+                if (!remoteData || !remoteData.users || !remoteData.apps) {
+                    throw new Error('云端数据格式错误或为空');
                 }
                 
-                // 🔥 步骤16-17: 异步从云端加载并合并数据
+                // 直接使用云端数据，不进行任何合并
+                cloudData = ensureDataIntegrity(remoteData);
+                console.log(`[BeeStore] ☁️ 云端数据加载成功: ${cloudData.apps.length} 个作品, ${cloudData.users.length} 个用户`);
+                
+                // 清除所有本地存储（确保不受旧数据影响）
                 try {
-                    const remoteData = await cloudStorage.loadData();
-                    const mergedData = ensureDataIntegrity(mergeCloudData(remoteData)); // 🔥 步骤15: 确保合并数据完整性
-                    
-                    if (JSON.stringify(mergedData) !== JSON.stringify(cloudData)) {
-                        cloudData = mergedData;
-                        
-                        // 保存合并后的数据到本地存储
-                        localStorageManager.saveToLocal(cloudData);
-                        
-                        // 更新UI
-                        loadApps();
-                        updateStats();
-                        updateStatus('☁️ 数据同步完成', 'connected');
-                        console.log('[BeeStore] 云端数据同步完成');
-                    } else {
-                        updateStatus('☁️ 数据已是最新', 'connected');
-                    }
-                } catch (cloudError) {
-                    console.warn('云端数据加载失败，使用本地数据:', cloudError);
-                    if (!localData) {
-                        // 既没有本地数据也没有云端数据，使用默认数据
-                        initLocalData();
-                    }
-                                         updateStatus('⚠️ 使用本地数据（云端连接失败）', 'local');
+                    localStorage.removeItem('beestoreLocalBackup');
+                    console.log('[BeeStore] 🧹 已清除本地备份数据');
+                } catch (clearError) {
+                    console.warn('清除本地数据时出错:', clearError);
                 }
                 
-                // 🔥 步骤12: 确保数据结构兼容性（为旧数据添加新字段）
+                // 🔥 确保数据结构兼容性（为旧数据添加新字段）
                 if (cloudData.apps) {
                     cloudData.apps.forEach(app => {
                         if (!app.likes) app.likes = [];
                         if (!app.favorites) app.favorites = [];
                         if (!app.comments) app.comments = [];
-                        if (!app.lastModified) app.lastModified = app.createdAt; // 为旧数据添加lastModified
+                        if (!app.lastModified) app.lastModified = app.createdAt;
                     });
                 }
                 
                 if (cloudData.users) {
                     cloudData.users.forEach(user => {
-                        if (!user.lastModified) user.lastModified = user.createdAt; // 为旧用户数据添加lastModified
+                        if (!user.lastModified) user.lastModified = user.createdAt;
                     });
                 }
                 
-                // 🔥 步骤19: 检查登录状态
+                // 更新UI
                 checkLoginStatus();
+                loadApps();
+                updateStats();
+                updateStatus('☁️ 纯云端模式', 'connected');
                 
-                // 保存合并后的数据到本地缓存
-                localCache.saveToLocal(cloudData);
-                
-                updateStatus('📱 已连接', 'connected');
-                
-                // 处理待同步的操作
+                // 初始化下拉菜单状态
                 updateDropdownSelection('category', '');
                 updateDropdownSelection('sort', 'newest');
                 updateDropdownSelection('category-mobile', '');
                 updateDropdownSelection('sort-mobile', 'newest');
                 
-            } catch (error) {
-                console.error('初始化失败:', error);
-                updateStatus('❌ 初始化失败', 'error');
+            } catch (cloudError) {
+                console.error('云端数据加载失败:', cloudError);
+                
+                // 纯云端模式下，如果云端失败就初始化空数据
                 initLocalData();
+                updateStatus('❌ 云端连接失败，使用空数据', 'error');
                 checkLoginStatus();
                 loadApps();
                 updateStats();
                 
-                // 初始化自定义下拉菜单状态
+                // 初始化下拉菜单状态
                 updateDropdownSelection('category', '');
                 updateDropdownSelection('sort', 'newest');
                 updateDropdownSelection('category-mobile', '');
                 updateDropdownSelection('sort-mobile', 'newest');
+                
+                // 显示错误信息给用户
+                alert(`云端数据加载失败: ${cloudError.message}\n\n请检查网络连接或稍后再试。`);
             }
         }
 
@@ -3370,8 +3712,8 @@
 
         // 更新统计信息
         function updateStats() {
-            const totalAppsElement = document.getElementById('total-apps');
-            const totalUsersElement = document.getElementById('total-users');
+            const totalAppsElement = document.getElementById('nav-total-apps');
+            const totalUsersElement = document.getElementById('nav-total-users');
             
             if (totalAppsElement) {
                 totalAppsElement.textContent = cloudData.apps ? cloudData.apps.length : 0;
@@ -3379,6 +3721,8 @@
             if (totalUsersElement) {
                 totalUsersElement.textContent = cloudData.users ? cloudData.users.length : 0;
             }
+            
+            console.log(`[BeeStore] 📊 统计更新: ${cloudData.apps ? cloudData.apps.length : 0} 个作品, ${cloudData.users ? cloudData.users.length : 0} 个用户`);
         }
 
         // 设置搜索事件
